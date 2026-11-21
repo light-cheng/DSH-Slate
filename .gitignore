@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+.tmp/
+.prototype/
+.live-test/
+.test-runtime/
+*.log
+*.tmp
+*.sqlite
+*.sqlite-*
+.env
+.env.*

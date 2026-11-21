@@ -1,0 +1,21 @@
+{
+  "sessionId": "session-c9047879-c01b-4078-abc0-370748d86531",
+  "label": "#c9047879",
+  "title": "到店自取流程",
+  "priority": "P0",
+  "progress": 65,
+  "status": "测试通过",
+  "next": "接入门店自取时间选择界面",
+  "completed": true,
+  "verified": true,
+  "manual": true,
+  "checks": [
+    {
+      "note": "node --test test/pickup.test.js：3 项通过",
+      "state": "passed",
+      "title": "到店自取校验测试"
+    }
+  ],
+  "bugs": []
+}
+PASS: manual 65% preserved

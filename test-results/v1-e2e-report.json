@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "hostVersion": "0.2.2-rc.5",
+  "model": "magpie / auto/deepseek-v4.1-flash",
+  "sessions": {
+    "empty": "session-459074c2-b993-4f22-a8cb-c22e4273e818",
+    "orders": "session-71ef59e2-7db1-4bc1-b564-11089f2e3b0f",
+    "pickup": "session-5d988a85-9c6d-43ec-8fac-9c19a3066bbc",
+    "mobile": "session-c564cb14-9d55-43e5-9422-9a025a9a6e40"
+  },
+  "styleMetrics": {
+    "rightbarWidth": 420,
+    "deliverableFont": 14,
+    "metaFont": 12,
+    "titleColor": "rgb(15, 17, 21)",
+    "refreshColor": "rgb(97, 102, 107)",
+    "bodyBg": "rgb(255, 255, 255)",
+    "draggedWidth": 514,
+    "widthAfterNav": 514,
+    "darkBg": "rgb(21, 21, 23)",
+    "editorColors": {
+      "saveBg": "rgb(15, 17, 21)",
+      "saveColor": "rgb(255, 255, 255)",
+      "accentColor": "rgb(15, 17, 21)"
+    }
+  },
+  "navigation": {
+    "beforeTitle": "订单库存接口实现与测试 — DeepSeek Harness",
+    "afterTitle": "实现到店自取时段校验 — DeepSeek Harness",
+    "crossSessionSidebarPersisted": true
+  },
+  "restartedTasks": 3,
+  "unauthenticatedRpcBlockedStatus": 401,
+  "browserErrors": [],
+  "ac08IsolatedClean": true,
+  "capturedAt": "2026-11-21T15:41:35.823Z"
+}

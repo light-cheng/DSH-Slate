@@ -1,0 +1,123 @@
+{
+  "goal": "完成书店线上预订与到店自取的最小可用版本",
+  "acceptance": "顾客能下单，取消订单能正确恢复库存，顾客能选择自取时间，手机页面问题有明确记录",
+  "tasks": [
+    {
+      "sessionId": "session-c9d3e387-f489-47eb-8274-3f10ec74a073",
+      "label": "#c9d3e387",
+      "title": "订单与库存接口",
+      "priority": "P0",
+      "progress": 100,
+      "status": "测试通过",
+      "next": "接入支付状态与订单页面",
+      "completed": true,
+      "verified": true,
+      "manual": false,
+      "checks": [
+        {
+          "title": "订单与库存单元测试",
+          "state": "passed",
+          "note": "node --test test/orders.test.js：3 项通过"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "sessionId": "session-c9047879-c01b-4078-abc0-370748d86531",
+      "label": "#c9047879",
+      "title": "到店自取流程",
+      "priority": "P0",
+      "progress": 100,
+      "status": "测试通过",
+      "next": "接入门店自取时间选择界面",
+      "completed": true,
+      "verified": true,
+      "manual": false,
+      "checks": [
+        {
+          "note": "node --test test/pickup.test.js：3 项通过",
+          "state": "passed",
+          "title": "到店自取校验测试"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "sessionId": "session-c140a519-71c8-4c9c-9bc3-db4e7aa503f2",
+      "label": "#c140a519",
+      "title": "移动端页面检查",
+      "priority": "P1",
+      "progress": 100,
+      "status": "检查完成，有待修问题",
+      "next": "为 480px 以下屏幕增加自适应布局，并重跑移动端测试",
+      "completed": true,
+      "verified": false,
+      "manual": false,
+      "checks": [
+        {
+          "title": "移动端窄屏检查",
+          "state": "failed",
+          "note": "node --test test/mobile.test.js：1 项失败，缺少 480px 媒体查询"
+        }
+      ],
+      "bugs": [
+        {
+          "priority": "P1",
+          "title": "手机页面固定 760px 宽度导致横向溢出",
+          "detail": "实际检查 booking.css 发现固定 width:760px 且无窄屏规则；移动端测试因此失败。改为 width:100%、max-width:760px 并补充媒体查询。"
+        },
+        {
+          "priority": "P2",
+          "title": "自取时间区域在窄容器中可能溢出",
+          "detail": "实际检查发现 .pickup-time 的 min-width:180px 不能收缩；窄屏下改为 width:100%、min-width:0。"
+        },
+        {
+          "priority": "P2",
+          "title": "现有移动端测试可能误通过",
+          "detail": "实际检查发现测试只匹配媒体查询是否存在，空规则也能通过；还需断言宽度自适应。"
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "title": "订单与库存单元测试",
+      "state": "passed",
+      "note": "node --test test/orders.test.js：3 项通过"
+    },
+    {
+      "note": "node --test test/pickup.test.js：3 项通过",
+      "state": "passed",
+      "title": "到店自取校验测试"
+    },
+    {
+      "title": "移动端窄屏检查",
+      "state": "failed",
+      "note": "node --test test/mobile.test.js：1 项失败，缺少 480px 媒体查询"
+    }
+  ],
+  "bugs": [
+    {
+      "priority": "P1",
+      "title": "手机页面固定 760px 宽度导致横向溢出",
+      "detail": "实际检查 booking.css 发现固定 width:760px 且无窄屏规则；移动端测试因此失败。改为 width:100%、max-width:760px 并补充媒体查询。"
+    },
+    {
+      "priority": "P2",
+      "title": "自取时间区域在窄容器中可能溢出",
+      "detail": "实际检查发现 .pickup-time 的 min-width:180px 不能收缩；窄屏下改为 width:100%、min-width:0。"
+    },
+    {
+      "priority": "P2",
+      "title": "现有移动端测试可能误通过",
+      "detail": "实际检查发现测试只匹配媒体查询是否存在，空规则也能通过；还需断言宽度自适应。"
+    }
+  ],
+  "activity": [
+    "#c140a519：移动端检查完成，实际运行测试 1 项失败，记录 3 个待修问题",
+    "#c9047879：门店、日期和自取时段校验已实现，3 项测试通过",
+    "#c9d3e387：订单创建、库存扣减和幂等取消已实现，3 项测试通过。"
+  ],
+  "updatedAt": "2026-11-21T11:08:05.147Z",
+  "browserErrors": []
+}

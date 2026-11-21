@@ -1,0 +1,30 @@
+✖ booking layout has a narrow-screen rule (2.000458ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39.922
+
+✖ failing tests:
+
+test at test/mobile.test.js:5:1
+✖ booking layout has a narrow-screen rule (2.000458ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /@media\s*\(max-width:\s*480px\)/. Input:
+  
+  '.booking { width: 760px; margin: 24px auto; }\n' +
+    '.pickup-time { display: inline-block; min-width: 180px; }\n' +
+    '/* Existing issue: no narrow-screen treatment. */\n'
+  
+      at TestContext.<anonymous> (file:///Users/light/Documents/Projects/Agent/DSH-Progress-Plugin/.live-test/workspace/test/mobile.test.js:7:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '.booking { width: 760px; margin: 24px auto; }\n.pickup-time { display: inline-block; min-width: 180px; }\n/* Existing issue: no narrow-screen treatment. */\n',
+    expected: /@media\s*\(max-width:\s*480px\)/,
+    operator: 'match',
+    diff: 'simple'
+  }

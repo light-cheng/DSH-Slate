@@ -1,0 +1,15 @@
+✔ creating an order deducts available stock (0.411958ms)
+✔ cancelling restores stock exactly once (0.106416ms)
+✔ out-of-stock orders are rejected (0.264375ms)
+✔ accepts a complete pickup selection (0.446875ms)
+✔ rejects a missing store (0.065709ms)
+✔ rejects an invalid time slot (0.078417ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44.867208
+

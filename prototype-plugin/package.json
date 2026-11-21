@@ -1,0 +1,23 @@
+{
+  "name": "dsh-slate",
+  "version": "0.0.1",
+  "private": true,
+  "description": "DSH-Slate: a live, editable project view in the DSH right sidebar.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./web": "./web.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "web.js", "lib/client.js", "cordis.patch.yml", "README.md"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web" }
+  }
+}
