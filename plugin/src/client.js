@@ -632,7 +632,28 @@ function App(props) {
 
 function TabTitle({ useTabInfo }) {
   const { tab } = useTabInfo();
-  return h('span', null, tab?.title || '项目进度');
+  const icons = [
+    ['light', typeof ICON_LIGHT_DATA_URL === 'string' ? ICON_LIGHT_DATA_URL : ''],
+    ['dark', typeof ICON_DARK_DATA_URL === 'string' ? ICON_DARK_DATA_URL : ''],
+  ];
+  return h(
+    'span',
+    { className: 'sl-tab-title' },
+    icons.map(([variant, src]) =>
+      src
+        ? h('img', {
+            key: variant,
+            className: `sl-tab-icon sl-tab-icon-${variant}`,
+            src,
+            alt: '',
+            'aria-hidden': 'true',
+            width: 16,
+            height: 16,
+          })
+        : null
+    ),
+    h('span', null, tab?.title || '项目进度')
+  );
 }
 
 function apply(ctx) {

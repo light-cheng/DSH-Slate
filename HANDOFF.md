@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
-更新时间：2026-11-21  
-当前阶段：**v0.1 正式插件实施与 `AC-01`–`AC-08` 隔离验收已完成，已本地提交至 `main` 分支（无远端推送）。**
+更新时间：2026-11-22  
+当前阶段：**v0.1 正式插件实施与 `AC-01`–`AC-08` 隔离验收已完成，双主题（M1 深 / M2 浅）Slate 图标已接入并重验通过，已本地链接安装至 `desktop` Profile，待真实项目手动实测。**
 
 ## 从这里开始
 
@@ -15,7 +15,7 @@ npm run verify
 
 ## 目录结构
 
-- [plugin/](plugin/)：正式生产插件目录（`index.js`、`src/evidence.js`、`src/domain.js`、`src/store.js`、`src/tool.js`、`src/rpc.js`、`src/client.js`、`src/styles.css`、`lib/client.js`、`scripts/build.mjs`、`scripts/verify.mjs`、`scripts/e2e-dsh.mjs`、`test/*.test.mjs`）。
+- [plugin/](plugin/)：正式生产插件目录（`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/evidence.js`、`src/domain.js`、`src/store.js`、`src/tool.js`、`src/rpc.js`、`src/client.js`、`src/styles.css`、`lib/client.js`、`scripts/build.mjs`、`scripts/verify.mjs`、`scripts/e2e-dsh.mjs`、`test/*.test.mjs`）。
 - [prototype-plugin/](prototype-plugin/)：早期原型代码（只作历史参考，未修改也未用于生产）。
 - [SPEC.md](SPEC.md)：正式需求规格、领域模型与 `AC-01`–`AC-08` 验收标准（v0.2）。
 - [AGENTS.md](AGENTS.md)：编码 Agent 约束与隔离测试约定。
@@ -35,8 +35,10 @@ npm run verify
 
 ## 本轮已验证项
 
-- `npm run verify`：构建 `lib/client.js`（38624 bytes），单色正则校验通过，`8/8` 单元与 6 进程并发集成测试全部通过。
-- `node plugin/scripts/e2e-dsh.mjs`（全新临时 `DSH_HOME`、`slate-web`、`slate-headless`、Magpie `auto/deepseek-v4.1-flash`）：
+- **图标与双主题集成**：接入定稿 M1（矿石青灰深色）与 M2（浅雾石板浅色）图标——`plugin/package.json` 声明默认 `"icon": "./icon.png"`（`256×256` RGBA），`plugin/assets/` 保存 `512×512` 与 `48×48` 双色资源；`plugin/README.md` 通过 `<picture>` 随 `prefers-color-scheme` 切换；`src/client.js` `TabTitle` 嵌入 `16×16` 图标并随宿主 `body[data-ds-dark-theme]` 自动切换。
+- `npm run verify`（接入图标后最新重跑）：构建 `lib/client.js`（53417 bytes），PNG 幻数与 `package.json` `"icon"` 声明校验通过，单色正则校验通过，`8/8` 单元与 6 进程并发集成测试全部通过。
+- **正式环境安装状态**：`desktop` Profile 已通过 `dsh plugin --profile desktop add link:/Users/light/Documents/Projects/Agent/DSH-Slate/plugin` 链接安装，`~/.dsh/profiles/desktop/node_modules/dsh-slate` 直接指向仓库 `plugin/`，更新文件与重构建实时生效；`web` Profile 因已有依赖 `dsh-worktable` 的浮动 GitHub release 校验和触发 `ERR_PNPM_TARBALL_INTEGRITY` 而保持未改动。
+- `node plugin/scripts/e2e-dsh.mjs`（v0.1 接入图标前跑通的全新临时 `DSH_HOME`、`slate-web`、`slate-headless`、Magpie `auto/deepseek-v4.1-flash`）：
   - `AC-01`–`AC-08` 全部通过（[v1-e2e-report.json](test-results/v1-e2e-report.json)）。
   - 独立重跑订单与自取测试 `6/6` 通过（[v1-orders-pickup-independent.txt](test-results/v1-orders-pickup-independent.txt)）；移动端测试 `1/1` 如实失败（[v1-mobile-independent.txt](test-results/v1-mobile-independent.txt)）。
   - 手动调整保护与「恢复会话汇报」校验通过（[v1-manual-preservation.txt](test-results/v1-manual-preservation.txt)）。
@@ -44,4 +46,5 @@ npm run verify
 
 ## 下一步（如后续迭代）
 
+- 用户在 **DeepSeek Harness 桌面端** 真实项目中实测右侧栏「项目进度」面板、深/浅色切换下的 `TabTitle` 图标以及工具真实汇报；如决定同时安装至 `web` Profile，需先经用户确认处理 `dsh-worktable` lockfile 校验和冲突。
 - 若需接通端到端真实人类用户确认、任务依赖图或新 DSH 版本适配，按 `AGENTS.md` 在独立分支或新提交上扩展并重跑 `npm run verify` 与 `node plugin/scripts/e2e-dsh.mjs`。

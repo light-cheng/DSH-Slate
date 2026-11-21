@@ -9,9 +9,30 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // 1. Build lib/client.js
 execFileSync(process.execPath, [join(root, 'scripts', 'build.mjs')], { stdio: 'inherit' });
 
-// 2. Validate built client bundle syntax & monochrome rules
+// 2. Validate built client bundle syntax & monochrome rules & icons
+const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+assert.equal(pkg.icon, './icon.png', 'package.json must declare icon');
+
+for (const rel of [
+  'icon.png',
+  'assets/icon-dark.png',
+  'assets/icon-light.png',
+  'assets/tab-icon-dark.png',
+  'assets/tab-icon-light.png',
+]) {
+  const buf = await readFile(join(root, rel));
+  assert.equal(
+    buf.subarray(0, 4).toString('hex'),
+    '89504e47',
+    `${rel} must be a valid PNG file`
+  );
+}
+
 const builtClient = await readFile(join(root, 'lib', 'client.js'), 'utf8');
 assert.ok(builtClient.includes('window.__ModuleLoader__.load'), 'client bundle must use __ModuleLoader__');
+assert.ok(builtClient.includes('ICON_DARK_DATA_URL'), 'client bundle must embed ICON_DARK_DATA_URL');
+assert.ok(builtClient.includes('ICON_LIGHT_DATA_URL'), 'client bundle must embed ICON_LIGHT_DATA_URL');
+assert.ok(builtClient.includes('data:image/png;base64,'), 'client bundle must embed PNG data URLs');
 new Function('window', builtClient);
 
 const css = await readFile(join(root, 'src', 'styles.css'), 'utf8');

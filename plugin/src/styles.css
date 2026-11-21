@@ -659,3 +659,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+.sl-tab-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.sl-tab-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: block;
+  object-fit: contain;
+}
+
+.sl-tab-icon-dark {
+  display: none;
+}
+
+body[data-ds-dark-theme] .sl-tab-icon-light {
+  display: none;
+}
+
+body[data-ds-dark-theme] .sl-tab-icon-dark {
+  display: block;
+}

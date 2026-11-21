@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/icon-dark.png" />
+  <img src="./assets/icon-light.png" alt="DSH-Slate" width="64" height="64" />
+</picture>
+
 # DSH-Slate 生产插件
 
 基于 [SPEC.md](../SPEC.md)（v0.2）为 DeepSeek Harness `0.2.2-rc.5` 构建的项目级进度侧栏插件。
