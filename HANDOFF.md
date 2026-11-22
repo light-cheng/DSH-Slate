@@ -41,16 +41,16 @@ npm pack --dry-run
 - **发布前逻辑修复与元数据收口**：
   - `src/domain.js`：同一 `taskId` 收到后续会话真实 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位（保留其他会话真实证据，支持按 `check.id` 跨会话精确替换）。
   - `src/prompt.js` & `src/tool.js`：向会话同步当前项目级 `acceptanceCriteria` 与 `todo` 待检查清单，并指导子任务汇报省略 `projectGoal`/`acceptanceCriteria`，防止单个子任务覆盖项目级验收标准。
-  - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题并添加单色可点击 `.sl-session-chip` 样式。
+  - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题，空态历史会话改用全宽纵向行表展示并默认显示 3 条，支持 `展开其余 N 个` / `收起` 查看全部，Quick Init prompt 仍严格上限 5 条引用。
   - `locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、双语 README、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪。
-- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`61666` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `13/13` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
+- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63476` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `13/13` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
 - `node plugin/scripts/e2e-autoflow.mjs`（最新隔离真实 DSH 验收，[v2-autoflow-report.json](test-results/v2-autoflow-report.json)）：
   - 日常开发会话未提插件/汇报工具即主动调用 `project_progress_report` 并通过 `exitCode === 0` 证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
-  - 空项目过滤空白草稿后显示 `已有 1 个历史会话` 与单色可点击真实标题芯片（见 [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)），且在 Playwright 中实测点击历史会话芯片成功跳转至目标会话并保持右侧「项目进度」打开；点击「快速初始化」写入 `16px` 目标；浅/深色 `16px` Tab 图标切换正常，浏览器错误 `0`。
+  - 空项目过滤空白草稿后显示 `已有 1 个历史会话` 与全宽单色纵向可点击列表（见 [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)），且在 Playwright 中实测点击历史会话行成功跳转至目标会话并保持右侧「项目进度」打开；点击「快速初始化」写入 `16px` 目标；浅/深色 `16px` Tab 图标切换正常，浏览器错误 `0`。
 - `node plugin/scripts/e2e-dsh.mjs`（全量 `AC-01`–`AC-08` 回归通过，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话、手动锁定防覆盖与恢复（且子任务自动遵循不覆写项目目标与验收标准规则）、完成/验收分离、跨会话保持、重启恢复、拖宽保持与隔离清理（原 `~/.dsh` SHA-256 一致）。
 - **正式环境安装状态**：`desktop` Profile 软链 `~/.dsh/profiles/desktop/node_modules/dsh-slate` 已指向更新后的 `plugin/`；`web` Profile 因既有 `dsh-worktable` 校验和冲突保持未改动；Git 仅本地提交，未推送未发布。
 
 ## 下一步（如后续迭代）
 
-- 用户**重启 DeepSeek Harness 桌面端**后复测一轮：确认插件详情页中英切换正常、已开发项目的跨会话/子任务汇报正常，且未初始化工作区（如 `EasyRight`）显示 `已有 5 个历史会话` 及可点击真实标题（已归档/无日志历史会话不再混入）。
+- 用户**刷新/重启 DeepSeek Harness 桌面端**后继续第 1–5 步复测：重点确认 `EasyRight` 空态显示 `已有 5 个历史会话` 全宽纵向列表与右上角 `展开其余 2 个` / `收起` 切换、以及一键「快速初始化」和后续跨会话/子任务汇报。
 - 确认通过后按 [MARKETPLACE.md](MARKETPLACE.md) 执行：创建 GitHub 公开仓库并推送 `main` → 配置 npm OIDC Trusted Publishing → 发布 `v0.1.0` Release 自动发布 npm → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。

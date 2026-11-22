@@ -307,12 +307,17 @@ test('collectGitSnapshot, collectWorkspaceContext & buildQuickInitPrompt on git 
       });
       const resFiltered = await collectWorkspaceContext(ctxFiltered, gitRepo, 'ses-cur');
       assert.equal(resFiltered.totalSessions, 14);
-      assert.equal(resFiltered.recentSessions.length, 5);
+      assert.equal(resFiltered.recentSessions.length, 12);
       assert.equal(resFiltered.recentSessions[0].id, 'ses-active-1');
       assert.equal(resFiltered.recentSessions[0].title, 'Active Session 1');
       assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-archived-1'), false);
       assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-ghost-missing'), false);
       assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-sub-1'), false);
+
+      const boundedPrompt = buildQuickInitPrompt(gitRepo, resFiltered);
+      assert.match(boundedPrompt, /Active Session 1/);
+      assert.match(boundedPrompt, /Active Session 5/);
+      assert.equal(boundedPrompt.includes('Active Session 6'), false);
     }
   } finally {
     await rm(tempRoot, { recursive: true, force: true });

@@ -161,12 +161,13 @@ function App(props) {
     items.sort((a, b) => b.ts - a.ts);
     return {
       totalSessions: items.length,
-      recentSessions: items.slice(0, 5),
+      recentSessions: items,
     };
   }, [sessionsById, workspaceItems, archivedSessionIds, sessionId, workspacePath]);
 
   const [project, setProject] = useState(EMPTY_VIEW);
   const [workspaceContext, setWorkspaceContext] = useState(null);
+  const [showAllSessions, setShowAllSessions] = useState(false);
   const [initStatus, setInitStatus] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -221,6 +222,10 @@ function App(props) {
       // Zero-token workspace context is advisory only; keep empty state interactive on failure.
     }
   }, [callRpc, sessionId, workspacePath]);
+
+  useEffect(() => {
+    setShowAllSessions(false);
+  }, [sessionId, workspacePath]);
 
   useEffect(() => {
     latestRevisionRef.current = -1;
@@ -595,6 +600,8 @@ function App(props) {
                   const historicalSessions = liveSessionSnapshot
                     ? liveSessionSnapshot.recentSessions
                     : (workspaceContext?.recentSessions || []);
+                  const visibleSessions = showAllSessions ? historicalSessions : historicalSessions.slice(0, 3);
+                  const hiddenSessionCount = Math.max(0, historicalSessions.length - 3);
                   return h('div', { className: 'sl-bootstrap' },
                     h('p', { className: 'sl-bootstrap-desc' }, '尚未记录项目进度。日常开发与测试会话会自动汇报，也可立即初始化当前工作区：'),
                     (workspaceContext?.git || historicalSessions.length > 0)
@@ -611,15 +618,28 @@ function App(props) {
                             : null,
                           historicalSessions.length > 0
                             ? h('div', { className: 'sl-bootstrap-sessions' },
-                                h('span', null, `已有 ${historicalTotal} 个历史会话：`),
-                                historicalSessions.slice(0, 3).map((item) =>
-                                  h('button', {
-                                    key: item.id,
-                                    type: 'button',
-                                    className: 'sl-session-chip',
-                                    title: `${item.title} (${item.label})`,
-                                    onClick: () => openSession(item.id),
-                                  }, item.title)
+                                h('div', { className: 'sl-bootstrap-sessions-head' },
+                                  h('span', null, `已有 ${historicalTotal} 个历史会话`),
+                                  hiddenSessionCount > 0
+                                    ? h('button', {
+                                        type: 'button',
+                                        className: 'sl-text-btn',
+                                        onClick: () => setShowAllSessions((prev) => !prev),
+                                      }, showAllSessions ? '收起' : `展开其余 ${hiddenSessionCount} 个`)
+                                    : null
+                                ),
+                                h('div', { className: `sl-bootstrap-sessions-list ${showAllSessions ? 'is-expanded' : ''}` },
+                                  visibleSessions.map((item) =>
+                                    h('button', {
+                                      key: item.id,
+                                      type: 'button',
+                                      className: 'sl-session-chip',
+                                      title: `${item.title} (${item.label})`,
+                                      onClick: () => openSession(item.id),
+                                    },
+                                      h('span', { className: 'sl-session-chip-title' }, item.title)
+                                    )
+                                  )
                                 )
                               )
                             : null

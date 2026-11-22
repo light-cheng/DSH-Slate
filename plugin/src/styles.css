@@ -177,26 +177,58 @@
 
 .sl-bootstrap-sessions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
+  margin-top: 4px;
+}
+
+.sl-bootstrap-sessions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sl-bootstrap-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sl-bootstrap-sessions-list.is-expanded {
+  max-height: 210px;
+  overflow-y: auto;
 }
 
 .sl-session-chip {
-  display: inline-block;
-  vertical-align: middle;
-  max-width: 196px;
-  padding: 2px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
   border: 1px solid var(--slate-border);
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--slate-bg);
   color: var(--slate-ink);
   font-size: 12px;
   line-height: 1.4;
+  text-align: left;
+  text-decoration: none;
+}
+
+.sl-session-chip-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-decoration: none;
+}
+
+.sl-session-chip::after {
+  content: "→";
+  flex-shrink: 0;
+  color: var(--slate-dimmed);
 }
 
 .sl-session-chip:hover {
@@ -204,6 +236,10 @@
   border-color: var(--slate-muted);
   color: var(--slate-ink);
   text-decoration: none;
+}
+
+.sl-session-chip:hover::after {
+  color: var(--slate-ink);
 }
 
 .sl-bootstrap-actions {

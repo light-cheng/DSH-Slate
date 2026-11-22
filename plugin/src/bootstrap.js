@@ -226,7 +226,7 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
   return {
     workspaceId,
     totalSessions: filteredIds.length,
-    recentSessions: resolved.slice(0, MAX_RECENT_SESSIONS),
+    recentSessions: resolved.slice(0, MAX_CANDIDATE_SESSIONS),
   };
 }
 
@@ -291,8 +291,9 @@ export function buildQuickInitPrompt(canonicalWorkspacePath, wsContext) {
   }
 
   if (wsContext?.recentSessions?.length > 0) {
+    const promptSessions = wsContext.recentSessions.slice(0, MAX_RECENT_SESSIONS);
     lines.push(
-      `- 历史会话标题参考：${wsContext.recentSessions.map((s) => `${s.label}「${s.title}」`).join('；')}`
+      `- 历史会话标题参考：${promptSessions.map((s) => `${s.label}「${s.title}」`).join('；')}`
     );
   }
 
