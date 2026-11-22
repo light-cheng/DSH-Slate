@@ -191,6 +191,37 @@ test('FR-05 & AC-04: evidence verification enforces real exitCode===0 and separa
   assert.equal(view.latestVerified.taskId, taskId);
   assert.equal(view.priorityItem, null);
   assert.equal(project.checks[0].state, 'failed');
+
+  // Masked exit codes (e.g. `|| true` or `; echo $?`) cannot forge `passed` or stamp `exitCode: 0` on `failed`
+  const maskedSession = makeSession([
+    {
+      type: 'tool/call',
+      seq: 0,
+      data: { callId: 'cmask', name: 'bash', arguments: JSON.stringify({ command: 'node --test test/mobile.test.js || true' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 1,
+      data: {
+        message: { toolCallId: 'cmask', source: { kind: 'tool', callId: 'cmask' }, isError: false, content: [{ type: 'text', text: '✖ fail 1\n[exit code: 0]' }] },
+      },
+    },
+  ]);
+  const maskedExecs = extractShellExecutions(maskedSession);
+  assert.equal(maskedExecs[0].status, 'masked');
+  assert.equal(maskedExecs[0].exitCode, null);
+
+  const maskedRes = await verifyReportedChecks(
+    [
+      { title: '掩码伪装通过', state: 'passed', command: 'node --test test/mobile.test.js || true', note: 'claimed' },
+      { title: '掩码失败记录', state: 'failed', command: 'node --test test/mobile.test.js || true', note: 'failed' },
+    ],
+    maskedExecs
+  );
+  assert.equal(maskedRes.checks[0].state, 'todo');
+  assert.equal(maskedRes.downgradedCount, 1);
+  assert.equal(maskedRes.checks[1].state, 'failed');
+  assert.equal(maskedRes.checks[1].exitCode, null);
 });
 
 test('FR-06 & FR-08: stable issue IDs deduplicate updates, rank priority focus, and support multi-session tasks', () => {

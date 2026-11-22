@@ -103,7 +103,7 @@ dsh plugin --profile desktop add link:"$(pwd)/plugin"
 
 ```sh
 cd plugin
-npm run verify      # 编译 lib/client.js，校验图标/配色/manifest，并运行全部 13 项单元与并发测试
+npm run verify      # 编译 lib/client.js，校验图标/配色/manifest，并运行全部 14 项单元与并发测试
 npm pack --dry-run  # 预演检查最终 npm 发布包内容
 ```
 

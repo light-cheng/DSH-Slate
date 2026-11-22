@@ -524,7 +524,7 @@ async function main() {
       cwd: wsBookstore,
       permissionMode: 'read-only',
       prompt: [
-        '不要修改任何文件。请读取 public/booking.css 与 test/mobile.test.js，并运行 bash 命令 `node --test test/mobile.test.js` 查看真实结果（预期失败）。',
+        '不要修改任何文件。请读取 public/booking.css 与 test/mobile.test.js，并直接运行 bash 命令 `node --test test/mobile.test.js`（不要加 `|| true`、管道或分号后缀，以保留真实非零退出码）。',
         '运行后必须调用 `project_progress_report` 工具汇报真实结果：',
         '- projectGoal: "完成书店线上预订与到店自取的最小可用版本"',
         '- task: "移动端页面检查"',

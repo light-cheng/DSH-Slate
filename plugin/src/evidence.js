@@ -60,13 +60,20 @@ function extractResultText(content) {
     .join('\n');
 }
 
+function hasMaskedExitCode(command) {
+  const cmd = String(command || '').trim();
+  if (!cmd) return false;
+  return /(?:\|\||;)\s*(?:true\b|:|exit\s+0\b|echo\b)/i.test(cmd);
+}
+
 /**
  * Parse rendered bash/pwsh tool output markers produced by `dsh-tool-bash`.
  * @param {string} text
  * @param {boolean} isError
- * @returns {{ status: 'passed' | 'failed' | 'running', exitCode: number | null }}
+ * @param {string} [command]
+ * @returns {{ status: 'passed' | 'failed' | 'running' | 'masked', exitCode: number | null }}
  */
-export function parseShellOutputStatus(text, isError) {
+export function parseShellOutputStatus(text, isError, command = '') {
   if (isError) {
     const exitMatch = text.match(/\[exit code:\s*(-?\d+)\]/m);
     return { status: 'failed', exitCode: exitMatch ? Number(exitMatch[1]) : null };
@@ -86,7 +93,13 @@ export function parseShellOutputStatus(text, isError) {
   const exitMatch = text.match(/\[exit code:\s*(-?\d+)\]/m);
   if (exitMatch) {
     const code = Number(exitMatch[1]);
+    if (code === 0 && hasMaskedExitCode(command)) {
+      return { status: 'masked', exitCode: null };
+    }
     return { status: code === 0 ? 'passed' : 'failed', exitCode: code };
+  }
+  if (hasMaskedExitCode(command)) {
+    return { status: 'masked', exitCode: null };
   }
   return { status: 'passed', exitCode: 0 };
 }
@@ -155,7 +168,7 @@ export function extractShellExecutions(session) {
 
       const outputText = extractResultText(event.data.message.content);
       const isError = Boolean(event.data.message.isError);
-      const parsed = parseShellOutputStatus(outputText, isError);
+      const parsed = parseShellOutputStatus(outputText, isError, call.command);
       executions.push({
         callId: call.callId,
         seq: event.seq ?? call.seq,
@@ -292,12 +305,16 @@ export async function verifyReportedChecks(reportedChecks, shellExecutions, opti
     }
 
     if (reportedState === 'failed') {
+      const failedExitCode =
+        matched && matched.status === 'failed'
+          ? matched.exitCode
+          : (typeof raw.exitCode === 'number' && raw.exitCode !== 0 ? raw.exitCode : null);
       checks.push({
         id: raw.id ? String(raw.id) : undefined,
         title,
         state: 'failed',
         ...(reportedCommand || matched?.command ? { command: reportedCommand || matched.command } : {}),
-        exitCode: matched?.exitCode ?? (typeof raw.exitCode === 'number' ? raw.exitCode : null),
+        exitCode: failedExitCode,
         outputSummary: note || matched?.outputSummary || '检查失败',
         ...(outputRef ? { outputRef } : {}),
         verifiedBy: undefined,

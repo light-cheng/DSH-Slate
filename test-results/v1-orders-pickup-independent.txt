@@ -1,9 +1,9 @@
-✔ creating an order deducts available stock (0.366334ms)
-✔ cancelling restores stock exactly once (0.083458ms)
-✔ out-of-stock orders are rejected (0.186208ms)
-✔ accepts a complete pickup selection (0.391666ms)
-✔ rejects a missing store (0.065209ms)
-✔ rejects an invalid time slot (0.070791ms)
+✔ creating an order deducts available stock (0.423875ms)
+✔ cancelling restores stock exactly once (0.077833ms)
+✔ out-of-stock orders are rejected (0.230167ms)
+✔ accepts a complete pickup selection (0.440583ms)
+✔ rejects a missing store (0.064209ms)
+✔ rejects an invalid time slot (0.096667ms)
 ℹ tests 6
 ℹ suites 0
 ℹ pass 6
@@ -11,5 +11,5 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 45.996541
+ℹ duration_ms 51.557917
 

@@ -103,7 +103,7 @@ If DSH reports `restart-required`, restart DeepSeek Harness so the desktop app r
 
 ```sh
 cd plugin
-npm run verify      # Build client bundle, verify icons/colors, run 13 unit & concurrency tests
+npm run verify      # Build client bundle, verify icons/colors, run 14 unit & concurrency tests
 npm pack --dry-run  # Inspect publishable tarball contents
 ```
 
