@@ -9,9 +9,21 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // 1. Build lib/client.js
 execFileSync(process.execPath, [join(root, 'scripts', 'build.mjs')], { stdio: 'inherit' });
 
-// 2. Validate built client bundle syntax & monochrome rules & icons
+// 2. Validate built client bundle syntax, release metadata, monochrome rules & icons
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 assert.equal(pkg.icon, './icon.png', 'package.json must declare icon');
+assert.equal(pkg.private, false, 'package.json must set private: false for npm publishing');
+assert.equal(pkg.license, 'MIT', 'package.json must declare MIT license');
+assert.ok(Array.isArray(pkg.keywords) && pkg.keywords.includes('dsh-plugin'), 'package.json keywords must include dsh-plugin');
+assert.equal(pkg.publishConfig?.access, 'public', 'package.json publishConfig.access must be public');
+
+const screenshotsManifest = JSON.parse(await readFile(join(root, 'screenshots.json'), 'utf8'));
+assert.ok(Array.isArray(screenshotsManifest.screenshots) && screenshotsManifest.screenshots.length > 0 && screenshotsManifest.screenshots.length <= 6, 'screenshots.json must list 1..6 screenshots');
+for (const entry of screenshotsManifest.screenshots) {
+  assert.ok(typeof entry.path === 'string' && entry.path.trim(), 'screenshot entry must define path');
+  const shotBuf = await readFile(join(root, entry.path));
+  assert.equal(shotBuf.subarray(0, 4).toString('hex'), '89504e47', `${entry.path} must be a valid PNG file`);
+}
 
 for (const rel of [
   'icon.png',

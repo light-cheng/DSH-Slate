@@ -544,9 +544,10 @@ function App(props) {
                                 h('button', {
                                   key: item.id,
                                   type: 'button',
-                                  className: 'sl-text-btn',
+                                  className: 'sl-text-btn sl-session-chip',
+                                  title: `${item.title} (${item.label})`,
                                   onClick: () => openSession(item.id),
-                                }, item.label)
+                                }, item.title)
                               )
                             )
                           : null

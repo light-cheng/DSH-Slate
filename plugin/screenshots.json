@@ -1,0 +1,28 @@
+{
+  "screenshots": [
+    {
+      "path": "assets/screenshots/01-light-overview.png",
+      "alt": "DSH-Slate right sidebar in light mode showing workspace goal, vertical task axis, evidence-verified checks, and open issues"
+    },
+    {
+      "path": "assets/screenshots/02-dark-overview.png",
+      "alt": "DSH-Slate right sidebar in dark mode with mineral slate tab icon and monochrome hierarchy"
+    },
+    {
+      "path": "assets/screenshots/03-empty-bootstrap.png",
+      "alt": "Empty workspace zero-token Git and historical session hints with one-click Quick Init"
+    },
+    {
+      "path": "assets/screenshots/04-edit-neutral.png",
+      "alt": "Neutral grayscale inline editor protecting manual goal and task overrides with Restore Session Sync"
+    },
+    {
+      "path": "assets/screenshots/05-evidence-detail.png",
+      "alt": "Expanded check and issue details displaying actual bash command, exit code, output ref, and source session link"
+    },
+    {
+      "path": "assets/screenshots/06-navigation.png",
+      "alt": "Cross-session navigation opening a linked session while keeping the DSH-Slate sidebar active"
+    }
+  ]
+}

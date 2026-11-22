@@ -28,6 +28,8 @@ export function formatSlatePromptSection(project) {
     '- 在当前工作区完成**实质性进展**（完成代码/文档改动、运行测试或构建得到结果、拆分或推进任务与交付物、发现明确阻塞或待修问题）后，在最终回复用户前**主动**调用一次 `project_progress_report` 同步进度，无需等待用户提醒。',
     '- 纯只读问答、闲聊或未产生实质项目变更时，**不要**调用 `project_progress_report`。',
     '- 继续推进已有任务时，务必传入下方对应的 `taskId`，避免重复创建同名任务。',
+    '- 若下方已存在「当前目标」和「当前验收标准」，做单个子任务汇报时**省略** `projectGoal` 与 `acceptanceCriteria`（不要用单个子任务的标准覆盖整份项目级验收标准）；仅在首次初始化或整个项目范围变化时传入。',
+    '- 任务阶段从「红灯/阻塞/筹备」推进到「实现完成/已验收」时，同步将 `task` 标题更新为准确的简洁名称（避免保留过时阶段后缀）。',
     '- `projectGoal` 保持**一句话简短概括（建议 25 字以内）**，只写项目核心目的，不要堆砌功能清单；`acceptanceCriteria` 控制在 2–5 条简短可验证标准。',
     '- 仅当**本会话**真实运行过对应测试/检查命令且退出码为 `0` 时，才可将检查项标为 `passed`；未在本会话执行的检查请如实标为 `todo`。',
     '',
@@ -35,7 +37,12 @@ export function formatSlatePromptSection(project) {
   ];
 
   const hasContent = Boolean(
-    view && (view.goal || view.tasks.length > 0 || view.issues.length > 0)
+    view &&
+      (view.goal ||
+        (view.acceptanceCriteria && view.acceptanceCriteria.length > 0) ||
+        view.tasks.length > 0 ||
+        view.checks.length > 0 ||
+        view.issues.length > 0)
   );
 
   if (!hasContent) {
@@ -46,6 +53,13 @@ export function formatSlatePromptSection(project) {
   if (view.goal) {
     const lockNote = view.hasGoalOverride ? '（用户已手动锁定，汇报时无需重写目标）' : '';
     lines.push(`- 当前目标：${view.goal}${lockNote}`);
+  }
+
+  if (Array.isArray(view.acceptanceCriteria) && view.acceptanceCriteria.length > 0) {
+    lines.push('- 当前验收标准（项目级，子任务汇报请省略 `acceptanceCriteria`）：');
+    for (const criterion of view.acceptanceCriteria.slice(0, 6)) {
+      lines.push(`  - ${criterion}`);
+    }
   }
 
   if (view.tasks.length > 0) {
@@ -59,6 +73,16 @@ export function formatSlatePromptSection(project) {
     for (const task of ordered.slice(0, 8)) {
       const verifiedTag = task.verified ? ' · 已验收' : '';
       lines.push(`  - [taskId: ${task.id}] ${task.title}（${task.priority} · ${task.workStatus}${verifiedTag} · ${task.progressEstimate}%）`);
+    }
+  }
+
+  const todoChecks = Array.isArray(view.checks)
+    ? view.checks.filter((check) => check.state === 'todo')
+    : [];
+  if (todoChecks.length > 0) {
+    lines.push('- 待检查项（后续会话实测通过后会自动替换同名任务下的未检查占位）：');
+    for (const check of todoChecks.slice(0, 5)) {
+      lines.push(`  - [checkId: ${check.id}] ${check.title}`);
     }
   }
 

@@ -3,18 +3,18 @@
   "hostVersion": "0.2.2-rc.5",
   "model": "magpie / auto/deepseek-v4.1-flash",
   "scenarioA": {
-    "sessionId": "session-84b88891-9786-452c-88f2-ffb9ea7a791d",
+    "sessionId": "session-1a5c0244-43fc-4305-b583-dd7f941b5cff",
     "proactiveReportCalls": 1,
     "revision": 1,
-    "goal": "修复 calc 求和函数并通过全部测试",
+    "goal": "修复 add 函数并保证测试全部通过",
     "taskCount": 1,
     "evidenceVerifiedChecks": 1
   },
   "scenarioB": {
-    "priorSessionId": "session-2248b56a-4488-4724-bf81-b4d5f1053355",
-    "uiSessionId": "session-031b1e38-3124-4384-9774-0c40849b42ec",
+    "priorSessionId": "session-6686507e-f348-4a5d-8b76-d8a102b508df",
+    "uiSessionId": "session-aad0cb5c-8a97-4b07-898d-c2fd41386c54",
     "afterInitMetrics": {
-      "goalText": "构建轻量跨平台托盘窗口定位工具",
+      "goalText": "交付轻量跨平台托盘工具，支持单二进制分发",
       "goalFontSize": 16,
       "taskCount": 2,
       "criteriaCount": 6,
@@ -34,5 +34,5 @@
   },
   "browserErrors": [],
   "isolatedProfilesUntouched": true,
-  "capturedAt": "2026-11-22T01:02:46.892Z"
+  "capturedAt": "2026-11-22T02:40:37.463Z"
 }

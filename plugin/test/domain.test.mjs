@@ -255,3 +255,86 @@ test('FR-06 & FR-08: stable issue IDs deduplicate updates, rank priority focus, 
   assert.equal(view.summary.openIssuesCount, 0);
   assert.equal(view.priorityItem, null);
 });
+
+test('FR-06: cross-session executed checks replace stale todo placeholders while keeping real evidence checks', () => {
+  let project = createEmptyProject('/tmp/proj-a');
+  ({ project } = applySessionReport(
+    project,
+    {
+      projectGoal: '发布前维护',
+      task: 'v0.4.0 发布后维护',
+      workStatus: 'in_progress',
+      progressEstimate: 40,
+      nextDeliverable: '跑全量测试',
+      summary: '初始化基线',
+      checks: [
+        { id: 'chk-lint', title: '语法检查', state: 'todo', note: '尚未执行' },
+        { title: '测试套件', state: 'todo', note: '尚未执行' },
+      ],
+    },
+    { sessionId: 'session-init-1111', workspacePath: '/tmp/proj-a', now: '2026-11-22T09:00:00.000Z' }
+  ));
+
+  const taskId = project.tasks[0].id;
+  assert.equal(project.checks.length, 2);
+
+  // Second session passes real checks on the same taskId (updating chk-lint explicitly + adding npm test)
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId,
+      task: 'v0.4.0 发布后维护',
+      workStatus: 'in_progress',
+      progressEstimate: 85,
+      nextDeliverable: '发布核对',
+      summary: '语法与测试均通过',
+      checks: [
+        {
+          id: 'chk-lint',
+          title: 'npm run check 语法检查',
+          state: 'passed',
+          command: 'npm run check',
+          exitCode: 0,
+          verifiedBy: 'evidence',
+          evidenceMatched: true,
+          note: '73/73 ok',
+        },
+        {
+          title: 'npm test 全量测试',
+          state: 'passed',
+          command: 'npm test',
+          exitCode: 0,
+          verifiedBy: 'evidence',
+          evidenceMatched: true,
+          note: '478 passed',
+        },
+      ],
+    },
+    { sessionId: 'session-test-2222', workspacePath: '/tmp/proj-a', now: '2026-11-22T09:10:00.000Z' }
+  ));
+
+  // Stale todo placeholders from session-init-1111 must be gone; only 2 executed passed checks remain
+  assert.equal(project.checks.length, 2);
+  assert.equal(project.checks.every((c) => c.state === 'passed'), true);
+
+  // Third session adding a todo check must NOT wipe earlier real passed checks from session-test-2222
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId,
+      task: 'v0.4.0 发布后维护',
+      workStatus: 'in_progress',
+      progressEstimate: 90,
+      nextDeliverable: 'Windows 烟测',
+      summary: '登记补充检查',
+      checks: [
+        { title: 'Windows 真机烟测', state: 'todo', note: '待在 Windows 执行' },
+      ],
+    },
+    { sessionId: 'session-doc-3333', workspacePath: '/tmp/proj-a', now: '2026-11-22T09:20:00.000Z' }
+  ));
+
+  assert.equal(project.checks.length, 3);
+  assert.equal(project.checks.filter((c) => c.state === 'passed').length, 2);
+  assert.equal(project.checks.filter((c) => c.state === 'todo').length, 1);
+});

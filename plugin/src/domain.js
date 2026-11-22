@@ -268,9 +268,25 @@ export function applySessionReport(current, input, context) {
   }
 
   if (Array.isArray(input.checks)) {
-    project.checks = project.checks.filter(
-      (check) => !(check.taskId === taskId && check.sourceSessionId === sessionId)
+    const incomingCheckIds = new Set(
+      input.checks.map((c) => (typeof c?.id === 'string' ? c.id.trim() : '')).filter(Boolean)
     );
+    const hasExecutedCheck = input.checks.some(
+      (c) => c?.state === 'passed' || c?.state === 'failed'
+    );
+    project.checks = project.checks.filter((check) => {
+      if (check.taskId === taskId && check.sourceSessionId === sessionId) return false;
+      if (check.taskId === taskId && incomingCheckIds.has(check.id)) return false;
+      if (
+        hasExecutedCheck &&
+        check.taskId === taskId &&
+        check.state === 'todo' &&
+        !check.evidenceMatched
+      ) {
+        return false;
+      }
+      return true;
+    });
     input.checks.forEach((rawCheck, index) => {
       const checkId = stableCheckId(taskId, sessionId, rawCheck, index);
       const state = VALID_CHECK_STATE.has(rawCheck.state) ? rawCheck.state : 'todo';

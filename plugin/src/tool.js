@@ -47,12 +47,12 @@ export const reportToolParameters = {
     },
     projectGoal: {
       type: 'string',
-      description: '一句话简短概括当前项目的核心目标（建议 25 字以内，不要堆砌详细功能清单）。',
+      description: '一句话简短概括当前项目的核心目标（建议 25 字以内）。若项目已有目标且整体范围未变，子任务汇报请省略此字段。',
     },
     acceptanceCriteria: {
       type: 'array',
       items: { type: 'string' },
-      description: '项目级验收标准列表（建议 2–5 条，每条简短明确、可验证）。',
+      description: '项目级验收标准列表（建议 2–5 条，简短可验证）。若项目已有验收标准且整体范围未变，子任务汇报请省略此字段，以免覆盖原有项目标准。',
     },
     task: {
       type: 'string',

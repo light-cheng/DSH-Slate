@@ -1,22 +1,90 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/icon-dark.png" />
-  <img src="./assets/icon-light.png" alt="DSH-Slate" width="64" height="64" />
-</picture>
+# DSH-Slate
 
-# DSH-Slate 生产插件
+**English** | [简体中文](README.zh-CN.md)
 
-基于 [SPEC.md](../SPEC.md)（v0.2）为 DeepSeek Harness `0.2.2-rc.5` 构建的项目级进度侧栏插件。
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/icon-dark.png" />
+    <img src="./assets/icon-light.png" width="96" height="96" alt="DSH-Slate icon" />
+  </picture>
+</p>
 
-## 核心能力
+A workspace-isolated, evidence-backed **project progress tracker** in the DeepSeek Harness (DSH) right sidebar (`项目进度`).
 
-- **工作区隔离与跨进程安全存储**：按规范化工作区路径隔离状态，使用文件锁与原子写入支持 Web 与多 Headless 并发汇报。
-- **权威身份与真实测试证据**：从 `exec.agent` 与会话事件日志直接获取真实 `sessionId`、`cwd` 及命令执行结果（FR-05 自动核对）。
-- **认证通信与实时更新**：通过 `ctx.connection.rpc` 与 `ctx.connection.fetch` 接入 DSH 鉴权通道并支持 SSE 推送。
-- **单色原生右侧栏**：遵循 DSH `--dsw-*` 语义变量、约 `420px` 初始栏宽（保留用户拖动）、手动编辑保护与「恢复会话汇报」、跨会话标签保持。
+Repository: <https://github.com/light-cheng/DSH-Slate>
 
-## 命令
+One project often spans multiple DSH sessions. Instead of opening past chats one by one to figure out what is done, what broke, and what ships next, DSH-Slate maintains a persistent, workspace-scoped project board that survives session switches, browser reloads, and DSH restarts.
+
+## Features
+
+- **Workspace-isolated persistent state**: stores each project by canonicalized (`realpath`) workspace path under `${DSH_HOME}/storages/dsh-slate/projects/`, guarded by an in-process queue, `O_EXCL` cross-process file lock, stale-lock eviction, atomic temp+rename writes, and filesystem watchers. Concurrent Web and Headless sessions write without losing updates.
+- **Automatic progress sync (`systemPrompt.section`)**: conditionally injects a compact workspace snapshot (`dsh-slate:project-progress`) listing active `taskId`s, project acceptance criteria, locked goal flags, pending `todo` checks, and open issues whenever `project_progress_report` is available. Models update progress proactively after substantive edits/tests, skip read-only Q&A turns, and avoid overwriting project-level acceptance criteria on subtask reports.
+- **Completion is not acceptance (`FR-05` evidence verification)**: `project_progress_report` resolves authoritative `sessionId` and `cwd` directly from DSH's `exec.agent` context (no spoofable `sessionId` argument). When an agent reports a check as `passed`, the host cross-checks actual `tool/call` and `tool/result` shell executions (`exitCode === 0`): unexecuted claims downgrade to `todo`, failures record as `failed`, long outputs spill safely to `outputs/<hash>/chk-<hash>.txt` (`64 KiB` cap), and cross-session real executions clear stale `todo` placeholders on the same task.
+- **Zero-token bootstrap hints & bounded Quick Init**: empty workspaces display read-only Git facts (`branch`, `latestTag`, uncommitted file count, latest commit) and real sidebar session titles (from DSH `session/list`, filtering blank drafts) at 0 model tokens, plus a one-click **快速初始化** button (`typertGateway`) that reads at most 1–2 root overview files to bootstrap a concise 1-sentence goal and `todo` baseline checks in seconds.
+- **Manual overrides & instant restore**: project goal, acceptance criteria, task priority, per-task progress estimate, and next deliverable can all be edited in-place inside a neutral grayscale editor. Locked fields show `· 手动调整`, resist subsequent session reports (while still collecting live test evidence), and can be unlocked via **恢复会话汇报**.
+- **Cross-session navigation & persistence**: clicking any task title or **最近通过** item jumps straight to the real `sessionId` (`ctx.uiWorkspace.openSession`) and keeps the Slate rightbar tab mounted and visible.
+- **Native monochrome DSH UI**: built on `--dsw-*` semantic theme variables and DSH typography (no green, no blue in neutral controls/editors; red reserved strictly for failures/severe issues and amber for waiting/blocked states), requesting ~`420px` initial width without overriding user-dragged widths, paired with dual-theme light/dark `16px` tab icons.
+
+## Interface
+
+![Empty workspace bootstrap hints](assets/screenshots/03-empty-bootstrap.png)
+
+![DSH-Slate light mode overview](assets/screenshots/01-light-overview.png)
+
+![DSH-Slate dark mode overview](assets/screenshots/02-dark-overview.png)
+
+![Neutral grayscale inline editor](assets/screenshots/04-edit-neutral.png)
+
+![Verification evidence details](assets/screenshots/05-evidence-detail.png)
+
+![Cross-session navigation](assets/screenshots/06-navigation.png)
+
+## Installation
+
+### From npm (after publishing)
 
 ```sh
-npm run build   # 编译生成 lib/client.js
-npm run verify  # 构建并运行单元与跨进程并发集成测试
+dsh plugin --profile desktop add dsh-slate
 ```
+
+### From a local checkout (development / linking)
+
+```sh
+dsh plugin --profile desktop add link:"$(pwd)"
+```
+
+If DSH reports `restart-required`, restart DeepSeek Harness to load the plugin bundle and open **项目进度** in the right sidebar.
+
+## Architecture
+
+```text
+DSH Agent Sessions (Web / Desktop / Headless)
+  ├─ systemPrompt.section  ──► Injects active taskIds, project criteria & sync rules
+  └─ project_progress_report ─► Binds real exec.agent sessionId + cwd
+                               Verifies shell tool/call + tool/result exitCode === 0
+                                        │
+                                        ▼
+                       Workspace Store (src/store.js)
+                       realpath key · O_EXCL cross-process lock · atomic rename
+                                        │
+                                        ├──► Authenticated Fetch RPC (/api/dsh-slate/rpc)
+                                        └──► Authenticated SSE Feed  (/api/dsh-slate/events)
+                                                 │
+                                                 ▼
+                       Right Sidebar UI (lib/client.js)
+                       ~420px initial width · dual-theme icon · openSession nav
+```
+
+## Verification & Development
+
+```sh
+npm run build       # Bundle src/client.js + src/styles.css + embedded tab icons -> lib/client.js
+npm run verify      # Build + verify manifest, icons, monochrome rules, and 13 unit/concurrency tests
+npm pack --dry-run  # Preview tarball contents
+```
+
+See [RELEASE.md](RELEASE.md) and [MARKETPLACE.md](MARKETPLACE.md) for npm trusted publishing and marketplace submission details.
+
+## License
+
+[MIT](LICENSE)

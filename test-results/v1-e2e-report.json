@@ -3,10 +3,10 @@
   "hostVersion": "0.2.2-rc.5",
   "model": "magpie / auto/deepseek-v4.1-flash",
   "sessions": {
-    "empty": "session-459074c2-b993-4f22-a8cb-c22e4273e818",
-    "orders": "session-71ef59e2-7db1-4bc1-b564-11089f2e3b0f",
-    "pickup": "session-5d988a85-9c6d-43ec-8fac-9c19a3066bbc",
-    "mobile": "session-c564cb14-9d55-43e5-9422-9a025a9a6e40"
+    "empty": "session-3fb12f78-db59-42d7-b7f1-a63c357faead",
+    "orders": "session-3c0b3e18-1d40-43f1-9e54-703d895e8715",
+    "pickup": "session-48c35c3a-6e9d-4274-9e30-321fe1803499",
+    "mobile": "session-f18b6bde-6d8b-4111-a813-4c678da14c9a"
   },
   "styleMetrics": {
     "rightbarWidth": 420,
@@ -25,13 +25,13 @@
     }
   },
   "navigation": {
-    "beforeTitle": "订单库存接口实现与测试 — DeepSeek Harness",
-    "afterTitle": "实现到店自取时段校验 — DeepSeek Harness",
+    "beforeTitle": "实现订单创建与幂等取消 — DeepSeek Harness",
+    "afterTitle": "实现门店自取时段校验 — DeepSeek Harness",
     "crossSessionSidebarPersisted": true
   },
   "restartedTasks": 3,
   "unauthenticatedRpcBlockedStatus": 401,
   "browserErrors": [],
   "ac08IsolatedClean": true,
-  "capturedAt": "2026-11-21T15:41:35.823Z"
+  "capturedAt": "2026-11-22T02:44:32.756Z"
 }

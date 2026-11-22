@@ -468,8 +468,13 @@ async function main() {
     assert.match(emptyHintsText, /main/);
     assert.match(emptyHintsText, /v0\.1\.0/);
     assert.match(emptyHintsText, /release v0\.1\.0 baseline/);
-    assert.match(emptyHintsText, /已有 [1-9]\d* 个历史会话/);
-    assert.ok(emptyHintsText.includes(priorShortLabel), `Expected prior session ${priorShortLabel} in ${emptyHintsText}`);
+    assert.match(emptyHintsText, /已有 1 个历史会话/);
+    const chips = await coldSlate.locator('.sl-session-chip').evaluateAll((els) =>
+      els.map((el) => ({ text: el.textContent?.trim() || '', title: el.getAttribute('title') || '' }))
+    );
+    assert.equal(chips.length, 1, `Blank draft session must be excluded; expected 1 historical chip, got ${JSON.stringify(chips)}`);
+    assert.ok(chips[0].title.includes(priorShortLabel), `Expected prior session ${priorShortLabel} in chip ${JSON.stringify(chips[0])}`);
+    assert.equal(chips[0].text.startsWith('会话 #'), false, `Expected real sidebar title, got fallback "${chips[0].text}"`);
 
     await page.screenshot({ path: join(REPO_ROOT, 'previews', 'v2-01-empty-hints.png') });
 

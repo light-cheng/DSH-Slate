@@ -1,3 +1,3 @@
-PASS: pickup edited to 65% and goal locked; resumed session session-5d988a85-9c6d-43ec-8fac-9c19a3066bbc reported 100% + new goal
-After live sync (total headless + UI sync 11617ms): pickup remained 65%, goal remained locked
+PASS: pickup edited to 65% and goal locked; resumed session session-48c35c3a-6e9d-4274-9e30-321fe1803499 reported 100% + new goal
+After live sync (total headless + UI sync 10388ms): pickup remained 65%, goal remained locked
 After clicking 恢复会话汇报: pickup restored to 100%, goal restored to session value

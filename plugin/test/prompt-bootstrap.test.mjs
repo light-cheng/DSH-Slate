@@ -152,18 +152,24 @@ test('formatSlatePromptSection & registerPromptGuidance inject active state and 
           progressEstimate: 60,
           nextDeliverable: '补齐签名脚本',
           summary: '完成基础打包',
+          checks: [
+            { id: 'chk-smoke', title: 'Windows 真机冒烟', state: 'todo', note: '待在 Windows 执行' },
+          ],
           issues: [
             { severity: 'P1', title: '签名证书缺失', detail: '需要补充环境变量' },
           ],
         },
         { sessionId: 'session-work-1', workspacePath: helpers.workspacePath, now: helpers.now }
       ).project;
-      return updateGoal(step1, { goal: '桌面托盘发布工具', acceptanceCriteria: ['双模式图标正常'] }, helpers.now);
+      return updateGoal(step1, { goal: '桌面托盘发布工具', acceptanceCriteria: ['双模式图标正常', '单测全通过'] }, helpers.now);
     });
 
     const populatedText = section.text({ agent: { id: 's2', session: { header: { id: 's2', cwd: ws } } } });
     assert.match(populatedText, /桌面托盘发布工具（用户已手动锁定/);
+    assert.match(populatedText, /当前验收标准（项目级，子任务汇报请省略 `acceptanceCriteria`）/);
+    assert.match(populatedText, /双模式图标正常/);
     assert.match(populatedText, /\[taskId: [^\]]+\] 构建发布流水线/);
+    assert.match(populatedText, /\[checkId: chk-smoke\] Windows 真机冒烟/);
     assert.match(populatedText, /\[issueId: [^\]]+\] \[P1\] 签名证书缺失/);
 
     // Tool disabled in agent preset -> returns empty string
@@ -203,18 +209,42 @@ test('collectGitSnapshot, collectWorkspaceContext & buildQuickInitPrompt on git 
 
     const mockCtx = createServiceHostMock({
       workspaceRegistry: {
-        list: () => [{ id: 'ws-git-1', path: gitRepo, sessionIds: ['ses-old-1', 'ses-old-2', 'ses-cur'] }],
+        list: () => [
+          {
+            id: 'ws-git-1',
+            path: gitRepo,
+            sessionIds: ['ses-blank', 'ses-old-1', 'ses-old-2', 'ses-cur'],
+          },
+        ],
       },
       sessionPersistence: {
         async readHeader(id) {
           return {
             id,
-            title: id === 'ses-old-2' ? '发布检查与标签' : '初始搭建',
-            updatedAt: id === 'ses-old-2' ? '2026-11-22T02:00:00Z' : '2026-11-21T01:00:00Z',
+            title: id === 'ses-old-1' ? '初始搭建' : '',
+            updatedAt: '2026-11-21T01:00:00Z',
           };
         },
       },
-      typertGateway: { invoke: async () => ({}) },
+      typertGateway: {
+        async invoke(req) {
+          if (req.namespace === 'session' && req.method === 'list') {
+            return {
+              items: [
+                { sessionId: 'ses-blank', blank: true, lastActiveAt: 1795309999000, projections: { values: { title: '' } } },
+                { sessionId: 'ses-old-1', blank: false, lastActiveAt: 1795300000000 },
+                {
+                  sessionId: 'ses-old-2',
+                  blank: false,
+                  lastActiveAt: 1795305000000,
+                  projections: { values: { title: '发布检查与标签' } },
+                },
+              ],
+            };
+          }
+          return {};
+        },
+      },
     });
 
     const wsCtx = await collectWorkspaceContext(mockCtx, gitRepo, 'ses-cur');
@@ -223,6 +253,8 @@ test('collectGitSnapshot, collectWorkspaceContext & buildQuickInitPrompt on git 
     assert.equal(wsCtx.canQuickInit, true);
     assert.equal(wsCtx.recentSessions[0].id, 'ses-old-2');
     assert.equal(wsCtx.recentSessions[0].title, '发布检查与标签');
+    assert.equal(wsCtx.recentSessions[1].title, '初始搭建');
+    assert.equal(wsCtx.recentSessions.some((s) => s.id === 'ses-blank'), false);
 
     const prompt = buildQuickInitPrompt(gitRepo, wsCtx);
     assert.match(prompt, /v0\.1\.0/);
@@ -283,9 +315,14 @@ test('RPC getWorkspaceContext and quickInit enforce DSH wire contracts and fallb
     const okRes = await gwDispatch('quickInit', { sessionId: 's1' });
     assert.equal(okRes.ok, true);
     assert.equal(okRes.value.sessionId, 'ses-init-created-99');
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
 
-    const [createCall, promptCall] = calls;
+    const [listCall, createCall, promptCall] = calls;
+    assert.equal(listCall.namespace, 'session');
+    assert.equal(listCall.method, 'list');
+    assert.equal(listCall.peer, peerMarker);
+    assert.deepEqual(listCall.args, { _request: {} });
+
     assert.equal(createCall.namespace, 'session');
     assert.equal(createCall.method, 'create');
     assert.equal(createCall.peer, peerMarker);

@@ -1,8 +1,8 @@
 {
   "name": "dsh-slate",
   "version": "0.1.0",
-  "private": true,
-  "description": "DSH-Slate: workspace-isolated, evidence-backed project view in the DeepSeek Harness right sidebar.",
+  "private": false,
+  "description": "DSH-Slate: workspace-isolated, evidence-backed project progress tracker in the DeepSeek Harness right sidebar.",
   "type": "module",
   "icon": "./icon.png",
   "main": "./index.js",
@@ -19,12 +19,47 @@
     "src/",
     "lib/client.js",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md",
+    "RELEASE.md",
+    "MARKETPLACE.md",
+    "LICENSE",
+    "screenshots.json"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "verify": "node scripts/verify.mjs",
-    "test": "node scripts/verify.mjs"
+    "check": "node scripts/verify.mjs",
+    "test": "node scripts/verify.mjs",
+    "prepack": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "project-progress",
+    "sidebar",
+    "workspace",
+    "slate"
+  ],
+  "engines": {
+    "node": ">=22.0.0",
+    "dsh": ">=0.2.1-rc.5 <0.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "author": "Light Cheng (https://github.com/light-cheng)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/light-cheng/DSH-Slate.git",
+    "directory": "plugin"
+  },
+  "homepage": "https://github.com/light-cheng/DSH-Slate#readme",
+  "bugs": {
+    "url": "https://github.com/light-cheng/DSH-Slate/issues"
   },
   "dsh": {
     "bundle": {

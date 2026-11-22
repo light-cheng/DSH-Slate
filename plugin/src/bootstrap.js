@@ -21,7 +21,23 @@ const OVERVIEW_CANDIDATES = [
 ];
 const MAX_CANDIDATE_SESSIONS = 12;
 const MAX_RECENT_SESSIONS = 5;
+const SESSION_LIST_TIMEOUT_MS = 2500;
 const QUICK_INIT_TIMEOUT_MS = 15000;
+
+function resolveBrowserPeer(ctx) {
+  const peer = ctx.get?.('connection')?.browserPeer;
+  return peer && typeof peer === 'object' ? peer : null;
+}
+
+function toIsoTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return new Date(value).toISOString();
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+  return '';
+}
 
 async function runGit(workspacePath, args) {
   const { stdout } = await execFileAsync('git', args, {
@@ -107,12 +123,39 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
     ? workspaces.find((ws) => canonicalizeWorkspacePath(ws?.path) === targetPath)
     : null;
 
+  const gateway = ctx.get?.('typertGateway');
+  const peer = resolveBrowserPeer(ctx);
+  const listMap = new Map();
+  if (gateway && typeof gateway.invoke === 'function') {
+    try {
+      const listed = await gateway.invoke({
+        namespace: 'session',
+        method: 'list',
+        args: { _request: {} },
+        signal: AbortSignal.timeout(SESSION_LIST_TIMEOUT_MS),
+        ...(peer ? { peer } : {}),
+      });
+      const items = Array.isArray(listed)
+        ? listed
+        : (Array.isArray(listed?.items) ? listed.items : []);
+      for (const item of items) {
+        const sid = item?.sessionId || item?.id;
+        if (typeof sid === 'string' && sid) {
+          listMap.set(sid, item);
+        }
+      }
+    } catch {
+      // Fallback cleanly to local header/label metadata when session/list is unavailable.
+    }
+  }
+
   const workspaceId = typeof matched?.id === 'string' ? matched.id : '';
   const rawIds = Array.isArray(matched?.sessionIds) ? matched.sessionIds : [];
   const seen = new Set();
   const filteredIds = [];
   for (const id of rawIds) {
     if (typeof id !== 'string' || !id || id === excludeSessionId || seen.has(id)) continue;
+    if (listMap.get(id)?.blank === true) continue;
     seen.add(id);
     filteredIds.push(id);
   }
@@ -131,9 +174,15 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
           header = null;
         }
       }
+      const summary = listMap.get(id);
       const title =
-        String(header?.title || header?.name || '').trim() || `会话 ${sessionLabel(id)}`;
-      const updatedAt = String(header?.updatedAt || header?.createdAt || '');
+        String(summary?.projections?.values?.title || '').trim() ||
+        String(summary?.title || '').trim() ||
+        String(header?.title || header?.name || '').trim() ||
+        `会话 ${sessionLabel(id)}`;
+      const updatedAt =
+        toIsoTimestamp(summary?.lastActiveAt ?? summary?.updatedAt) ||
+        toIsoTimestamp(header?.updatedAt ?? header?.createdAt);
       return {
         id,
         label: sessionLabel(id),
@@ -259,10 +308,7 @@ export async function triggerQuickInit(ctx, _store, { workspacePath, sessionId =
   const wsContext = await collectWorkspaceContext(ctx, canonical, sessionId);
   const promptText = buildQuickInitPrompt(canonical, wsContext);
 
-  const connection = ctx.get?.('connection');
-  const peer = connection?.browserPeer && typeof connection.browserPeer === 'object'
-    ? connection.browserPeer
-    : null;
+  const peer = resolveBrowserPeer(ctx);
 
   const createRequest = wsContext.workspaceId
     ? { workspaceId: wsContext.workspaceId }

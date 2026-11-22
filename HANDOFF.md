@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**v0.2 主动汇报引导、零 token 工作区线索与一键「快速初始化」及目标排版收敛已实施并完成真机隔离 E2E 验收；`desktop` Profile 软链实时生效。**
+当前阶段：**Release-ready 收口完成（暂未推送远端也未发布 npm）——已修复跨会话 `todo` 检查残留、子任务覆盖项目验收标准及 `session/list` 真实历史会话标题读取，补齐 `package.json`、`LICENSE`、GitHub Actions（OIDC 发布）、双语 README 与 `MARKETPLACE.md`，并通过全套单元测试及双轮隔离 DSH 实测，待用户桌面端复测后发布。**
 
 ## 从这里开始
 
@@ -9,14 +9,17 @@
 cd /Users/light/Documents/Projects/Agent/DSH-Slate/plugin
 npm run build
 npm run verify
+npm pack --dry-run
 ```
 
-先读 [SPEC.md](SPEC.md) 和本文件。[AGENTS.md](AGENTS.md) 包含编码边界与 DSH 测试隔离规则，[TESTING.md](TESTING.md) 记录隔离测试矩阵、新执行证据与历史基线区分。
+先读 [SPEC.md](SPEC.md) 和本文件。[AGENTS.md](AGENTS.md) 包含编码边界与 DSH 测试隔离规则，[TESTING.md](TESTING.md) 记录隔离测试矩阵、新执行证据与历史基线区分，[RELEASE.md](RELEASE.md) 与 [MARKETPLACE.md](MARKETPLACE.md) 记录 GitHub Release 联动 npm 与插件市场提交流程。
 
 ## 目录结构
 
-- [plugin/](plugin/)：正式生产插件目录（`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/evidence.js`、`src/domain.js`、`src/store.js`、`src/prompt.js`、`src/bootstrap.js`、`src/tool.js`、`src/rpc.js`、`src/client.js`、`src/styles.css`、`lib/client.js`、`scripts/build.mjs`、`scripts/verify.mjs`、`scripts/e2e-dsh.mjs`、`scripts/e2e-autoflow.mjs`、`test/*.test.mjs`）。
-- [prototype-plugin/](prototype-plugin/)：早期原型代码（只作历史参考，未修改也未用于生产）。
+- [plugin/](plugin/)：正式生产插件目录（`package.json` 已设为 `private: false`、`MIT` 许可、发布包白名单与 `screenshots.json`，含 `assets/screenshots/01`–`06`、`README.md`、`README.zh-CN.md`、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/*.js`、`src/styles.css`、`lib/client.js`、`scripts/*.mjs`、`test/*.test.mjs`）。
+- [.github/workflows/](.github/workflows/)：`ci.yml`（三平台 CI + pack 检查）与 `release.yml`（GitHub Release 触发 OIDC `npm publish`）。
+- 根目录发布与文档：[README.md](README.md)、[README.zh-CN.md](README.zh-CN.md)、[RELEASE.md](RELEASE.md)、[MARKETPLACE.md](MARKETPLACE.md)、[LICENSE](LICENSE)、[screenshots.json](screenshots.json)。
+- [prototype-plugin/](prototype-plugin/)：早期原型代码（只作历史参考，未修改也未用于生产与打包）。
 - [SPEC.md](SPEC.md)：正式需求规格、领域模型与 `AC-01`–`AC-08` 验收标准（v0.2，含 `FR-09`）。
 - [AGENTS.md](AGENTS.md)：编码 Agent 约束与隔离测试约定。
 - [direction-approved.md](direction-approved.md)：已批准的原生 DSH 石墨单色视觉基准。
@@ -35,18 +38,19 @@ npm run verify
 
 ## 本轮已验证项
 
-- **v0.2 自动汇报、冷启动线索与紧凑排版**：
-  - `src/prompt.js` 通过 `ctx.inject(['systemPrompt'], ...)` 条件注册 `dsh-slate:project-progress` 动态片段，携带工作区 `taskId`、目标锁定状态与开放问题，并在 `tools.get('project_progress_report', agent)` 不可用时自动退避。
-  - `src/bootstrap.js` 通过 `git` 只读快照（`execFile` 无 shell 拼接）与会话注册表提供零 token 工作区线索，并通过受控单步提示与 `typertGateway`（`session/create` + `session/prompt` 携带 `connection.browserPeer`）实现一键「快速初始化」。
-  - `src/tool.js` 与 `src/styles.css` 收敛 `projectGoal` 一句话简短描述（建议 25 字以内）与 `16px` 标题字号，空项目卡片保持纯单色。
-- `npm run verify`（最新运行）：构建 `lib/client.js`（`58221` bytes），PNG 幻数与 `package.json` `"icon"` 声明校验通过，单色正则校验通过，`12/12` 单元、Prompt/冷启动与 6 进程并发集成测试全部通过。
+- **发布前逻辑修复与元数据收口**：
+  - `src/domain.js`：同一 `taskId` 收到后续会话真实 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位（保留其他会话真实证据，支持按 `check.id` 跨会话精确替换）。
+  - `src/prompt.js` & `src/tool.js`：向会话同步当前项目级 `acceptanceCriteria` 与 `todo` 待检查清单，并指导子任务汇报省略 `projectGoal`/`acceptanceCriteria`，防止单个子任务覆盖项目级验收标准。
+  - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list` 读取 `projections.values.title` 展示真实历史会话标题并过滤 `blank: true` 草稿会话。
+  - `plugin/package.json`、双语 README、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪。
+- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`58430` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `13/13` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
 - `node plugin/scripts/e2e-autoflow.mjs`（最新隔离真实 DSH 验收，[v2-autoflow-report.json](test-results/v2-autoflow-report.json)）：
-  - 日常开发会话在**未提及插件/汇报工具**下主动触发 `project_progress_report` 并完成证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
-  - 空项目正确展示零 token Git/历史会话提示，点击「快速初始化」通过真实 `typertGateway` 以 2 步完成项目初始化；浅/深色 `16px` Tab 图标自动切换正常，浏览器错误为 `0`（[v2-01-empty-hints.png](previews/v2-01-empty-hints.png)、[v2-02-after-quick-init-light.png](previews/v2-02-after-quick-init-light.png)、[v2-03-after-quick-init-dark.png](previews/v2-03-after-quick-init-dark.png)）。
-- **正式环境安装状态**：`desktop` Profile 已通过 `dsh plugin --profile desktop add link:/Users/light/Documents/Projects/Agent/DSH-Slate/plugin` 链接安装，`~/.dsh/profiles/desktop/node_modules/dsh-slate` 直接指向仓库 `plugin/`，更新文件与重构建实时生效；`web` Profile 因已有依赖 `dsh-worktable` 的浮动 GitHub release 校验和触发 `ERR_PNPM_TARBALL_INTEGRITY` 而保持未改动。
-- `node plugin/scripts/e2e-dsh.mjs`（v0.1 `AC-01`–`AC-08` 基线验收，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话、手动调整保护、完成/验收分离、跨会话保持、重启恢复、栏宽保持与隔离清理。
+  - 日常开发会话未提插件/汇报工具即主动调用 `project_progress_report` 并通过 `exitCode === 0` 证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
+  - 空项目过滤空白草稿后显示 `已有 1 个历史会话：PRIOR_OK verification request`；点击「快速初始化」仅 2 步写入 `16px` 目标；浅/深色 `16px` Tab 图标切换正常，浏览器错误 `0`。
+- `node plugin/scripts/e2e-dsh.mjs`（全量 `AC-01`–`AC-08` 最新回归通过，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话、手动锁定防覆盖与恢复（且子任务自动遵循不覆写项目目标与验收标准规则）、完成/验收分离、跨会话保持、重启恢复、拖宽保持与隔离清理（原 `~/.dsh` SHA-256 一致）。
+- **正式环境安装状态**：`desktop` Profile 软链 `~/.dsh/profiles/desktop/node_modules/dsh-slate` 已指向更新后的 `plugin/`；`web` Profile 因既有 `dsh-worktable` 校验和冲突保持未改动；Git 仅本地提交，未推送未发布。
 
 ## 下一步（如后续迭代）
 
-- 用户在 **DeepSeek Harness 桌面端** 重启后可直接在旧项目侧栏体验「快速初始化」及后续会话的自动进度汇报。
-- 如决定同时安装至 `web` Profile，需先经用户确认处理 `dsh-worktable` lockfile 校验和冲突；若需再次全量核对 `AC-01`–`AC-08`，可重跑 `node plugin/scripts/e2e-dsh.mjs`。
+- 用户在 **DeepSeek Harness 桌面端** 重启后复测一轮，确认「跨会话 `todo` 自动替换」「子任务不覆盖项目验收标准」及「空项目真实历史会话标题」。
+- 确认通过后按 [MARKETPLACE.md](MARKETPLACE.md) 执行：创建 GitHub 公开仓库并推送 `main` → 配置 npm OIDC Trusted Publishing → 发布 `v0.1.0` Release 自动发布 npm → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。

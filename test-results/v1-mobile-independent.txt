@@ -1,4 +1,4 @@
-✖ booking layout has a narrow-screen rule (0.777625ms)
+✖ booking layout has a narrow-screen rule (1.036167ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 0
@@ -6,19 +6,19 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 46.635584
+ℹ duration_ms 47.02725
 
 ✖ failing tests:
 
 test at test/mobile.test.js:5:1
-✖ booking layout has a narrow-screen rule (0.777625ms)
+✖ booking layout has a narrow-screen rule (1.036167ms)
   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /@media\s*\(max-width:\s*480px\)/. Input:
   
   '.booking { width: 760px; margin: 24px auto; }\n' +
     '.pickup-time { display: inline-block; min-width: 180px; }\n' +
     '/* Existing issue: no narrow-screen treatment. */\n'
   
-      at TestContext.<anonymous> (file:///Users/light/Documents/Projects/Agent/DSH-Slate/.tmp/e2e-bnBPDD/workspace-bookstore/test/mobile.test.js:7:10)
+      at TestContext.<anonymous> (file:///Users/light/Documents/Projects/Agent/DSH-Slate/.tmp/e2e-VMMaDN/workspace-bookstore/test/mobile.test.js:7:10)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Test.start (node:internal/test_runner/test:1257:17)
