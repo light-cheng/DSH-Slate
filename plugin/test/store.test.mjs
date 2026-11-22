@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { applySessionReport, buildProjectView } from '../src/domain.js';
 import { createProjectStore } from '../src/store.js';
 
@@ -81,8 +82,8 @@ test('AC-06: 6 concurrent child processes mutating the same workspace lose zero 
     await mkdir(ws, { recursive: true });
 
     const workerScript = `
-      import { createProjectStore } from ${JSON.stringify(join(PLUGIN_ROOT, 'src', 'store.js'))};
-      import { applySessionReport } from ${JSON.stringify(join(PLUGIN_ROOT, 'src', 'domain.js'))};
+      import { createProjectStore } from ${JSON.stringify(pathToFileURL(join(PLUGIN_ROOT, 'src', 'store.js')).href)};
+      import { applySessionReport } from ${JSON.stringify(pathToFileURL(join(PLUGIN_ROOT, 'src', 'domain.js')).href)};
       const [dshHome, ws, idx] = process.argv.slice(2);
       const store = createProjectStore({ dshHome });
       await store.mutate(ws, (current, helpers) =>

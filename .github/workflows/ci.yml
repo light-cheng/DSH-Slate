@@ -7,14 +7,13 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: plugin
-
 jobs:
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: plugin
     strategy:
       fail-fast: false
       matrix:
