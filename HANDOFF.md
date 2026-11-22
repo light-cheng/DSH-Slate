@@ -16,7 +16,7 @@ npm pack --dry-run
 
 ## 目录结构
 
-- [plugin/](plugin/)：正式生产插件目录（`package.json` 已设为 `private: false`、`MIT` 许可、发布包白名单与 `screenshots.json`，含 `assets/screenshots/01`–`06`、`README.md`、`README.zh-CN.md`、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/*.js`、`src/styles.css`、`lib/client.js`、`scripts/*.mjs`、`test/*.test.mjs`）。
+- [plugin/](plugin/)：正式生产插件目录（`package.json` 已设为 `private: false`、`MIT` 许可、发布包白名单与 `screenshots.json`，含 `locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、`assets/screenshots/01`–`06`、`README.md`、`README.zh-CN.md`、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/*.js`、`src/styles.css`、`lib/client.js`、`scripts/*.mjs`、`test/*.test.mjs`）。
 - [.github/workflows/](.github/workflows/)：`ci.yml`（三平台 CI + pack 检查）与 `release.yml`（GitHub Release 触发 OIDC `npm publish`）。
 - 根目录发布与文档：[README.md](README.md)、[README.zh-CN.md](README.zh-CN.md)、[RELEASE.md](RELEASE.md)、[MARKETPLACE.md](MARKETPLACE.md)、[LICENSE](LICENSE)、[screenshots.json](screenshots.json)。
 - [prototype-plugin/](prototype-plugin/)：早期原型代码（只作历史参考，未修改也未用于生产与打包）。

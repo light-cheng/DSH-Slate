@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Slate 项目进度",
+    "description": "DSH 右侧栏工作区级项目进度面板：日常会话自动汇报进展、真实命令退出码核对验收、手动覆盖保护及 0 token 工作区线索。",
+    "detail": "docs/plugin-page.zh-CN.md"
+  }
+}

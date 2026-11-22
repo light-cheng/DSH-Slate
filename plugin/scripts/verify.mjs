@@ -16,6 +16,17 @@ assert.equal(pkg.private, false, 'package.json must set private: false for npm p
 assert.equal(pkg.license, 'MIT', 'package.json must declare MIT license');
 assert.ok(Array.isArray(pkg.keywords) && pkg.keywords.includes('dsh-plugin'), 'package.json keywords must include dsh-plugin');
 assert.equal(pkg.publishConfig?.access, 'public', 'package.json publishConfig.access must be public');
+assert.equal(pkg.exports?.['./locale/*.json'], './locale/*.json', 'package.json must export ./locale/*.json');
+
+for (const localeRel of ['locale/en.json', 'locale/zh.json']) {
+  const loc = JSON.parse(await readFile(join(root, localeRel), 'utf8'));
+  assert.ok(typeof loc?.meta?.title === 'string' && loc.meta.title.trim(), `${localeRel} must define meta.title`);
+  assert.ok(typeof loc?.meta?.description === 'string' && loc.meta.description.trim(), `${localeRel} must define meta.description`);
+  assert.ok(typeof loc?.meta?.detail === 'string' && loc.meta.detail.trim(), `${localeRel} must define meta.detail`);
+  const detailText = await readFile(join(root, loc.meta.detail), 'utf8');
+  assert.ok(detailText.trim().length > 0, `${loc.meta.detail} must be non-empty`);
+  assert.equal(/README(?:\.zh-CN)?\.md/i.test(detailText), false, `${loc.meta.detail} must not rely on broken relative README links`);
+}
 
 const screenshotsManifest = JSON.parse(await readFile(join(root, 'screenshots.json'), 'utf8'));
 assert.ok(Array.isArray(screenshotsManifest.screenshots) && screenshotsManifest.screenshots.length > 0 && screenshotsManifest.screenshots.length <= 6, 'screenshots.json must list 1..6 screenshots');

@@ -10,12 +10,16 @@
     ".": "./index.js",
     "./client": "./lib/client.js",
     "./icon": "./icon.png",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
     "icon.png",
     "assets/",
+    "locale/*.json",
+    "docs/plugin-page.en.md",
+    "docs/plugin-page.zh-CN.md",
     "src/",
     "lib/client.js",
     "cordis.patch.yml",

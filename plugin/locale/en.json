@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Slate Project Progress",
+    "description": "Workspace-isolated project progress panel in the DSH right sidebar: automatic session reporting, shell-verified checks, manual overrides, and zero-token workspace hints.",
+    "detail": "docs/plugin-page.en.md"
+  }
+}
