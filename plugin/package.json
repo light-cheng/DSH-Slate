@@ -1,5 +1,5 @@
 {
-  "name": "dsh-slate",
+  "name": "@lightcheng/dsh-slate",
   "version": "0.1.0",
   "private": false,
   "description": "DSH-Slate: workspace-isolated, evidence-backed project progress tracker in the DeepSeek Harness right sidebar.",

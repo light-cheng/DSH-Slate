@@ -1,6 +1,6 @@
 name: release
 
-# Publishing a GitHub release publishes `plugin/` (`dsh-slate`) to npm via
+# Publishing a GitHub release publishes `plugin/` (`@lightcheng/dsh-slate`) to npm via
 # npm trusted publishing (OIDC). No npm token or secret is used; the trusted
 # publisher on npmjs.com names this file (release.yml) with no environment.
 on:
@@ -52,7 +52,7 @@ jobs:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           if [ "$PRERELEASE" = "true" ]; then
-            npm publish --tag next
+            npm publish --access public --tag next
           else
-            npm publish --tag latest
+            npm publish --access public --tag latest
           fi

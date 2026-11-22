@@ -77,7 +77,7 @@ DSH 会话运行时（Web / Desktop / Headless）
 ### 从 npm 安装（发布后）
 
 ```sh
-dsh plugin --profile desktop add dsh-slate
+dsh plugin --profile desktop add @lightcheng/dsh-slate
 ```
 
 ### 从本地源码链接安装（开发 / 源码试用）

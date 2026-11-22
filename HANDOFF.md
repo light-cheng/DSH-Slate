@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**Release-ready 全面收口完成（暂未推送远端、未发布 npm、未提交插件市场）——已完成全部发布展示素材与 npm 绝对图片/文档链接、掩码退出码（`|| true` / `; echo`）证据校验加固，并通过桌面端第 0–5 步人工复核、`14/14` 单元与并发测试、以及最新 HEAD 上全量 `AC-01`–`AC-08` 隔离 DSH 端到端回归，待用户指示开始发布。**
+当前阶段：**发布推进中——因 `dsh-slate` 在 npm 已被占位，已按用户确认将 npm 包名切换为 `@lightcheng/dsh-slate`（保留内部存储路径与 UI ID `dsh-slate` 向后兼容），通过隔离 DSH CLI 安装验证、创建 GitHub 公开仓库 `light-cheng/DSH-Slate` 并推送 `main`，等待用户完成 npm OIDC Trusted Publishing 绑定后发布 `v0.1.0` Release，并满 24 小时后提交 `awesome-dsh-plugin`。**
 
 ## 从这里开始
 
@@ -42,14 +42,14 @@ npm pack --dry-run
   - `src/domain.js`、`src/prompt.js` & `src/tool.js`：同一 `taskId` 收到后续实测 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位及已被同命令/同标题/实测通过并完成替代的旧 `failed` 检查；`resolveTaskId` 在同一会话已有唯一未验收任务且未传 `taskId` 时自动复用（修复 TDD 红转绿改名产生重复红灯卡片）；用户手动点击「验收通过」的任务，其历史 `failed` 检查从顶部「优先处理」与提示词「未通过检查」中忽略（同时在 `验收记录` 如实保留历史 `failed` 记录）；相邻重复动态去重；引导子任务汇报省略 `projectGoal`/`acceptanceCriteria`。
   - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题，空态历史会话改用全宽纵向行表展示并默认显示 3 条，支持 `展开其余 N 个` / `收起` 查看全部，Quick Init prompt 仍严格上限 5 条引用。
   - `src/evidence.js`：增加壳命令退出码掩码检测（禁止 `|| true`、`; echo` 等将失败命令伪造为 `exitCode === 0` 通过，且 `failed` 检查不输出自相矛盾的 `退出码：0`）。
-  - `locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、更新版 [03-empty-bootstrap.png](plugin/assets/screenshots/03-empty-bootstrap.png)、npm 绝对链接版 `plugin/README*.md`、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪。
-- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63476` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `14/14` 单元/并发测试全部通过；打包产物为 `34` 个文件（`2.3 MB`），不含 `prototype-plugin/`、`test/` 与临时文件。
+  - `package.json`、`cordis.patch.yml`、`scripts/verify.mjs`、`.github/workflows/release.yml`、`locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、更新版 [03-empty-bootstrap.png](plugin/assets/screenshots/03-empty-bootstrap.png)、npm 绝对链接版 `plugin/README*.md`、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪；包名采用 `@lightcheng/dsh-slate`（与 `cordis.patch.yml` 一致校验），内部存储、Tab ID 与 RPC 路由仍兼容 `dsh-slate`。
+- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63488` bytes），发布元数据、`cordis.patch.yml` 包名校验、`icon`、6 张截图、`screenshots.json`、单色规则与 `14/14` 单元/并发测试全部通过；打包产物为 `lightcheng-dsh-slate-0.1.0.tgz`（`34` 个文件，`2.3 MB`），并在隔离临时 `DSH_HOME` 中实测 `dsh plugin add link:.../plugin` 挂载 `@lightcheng/dsh-slate` 零报错。
 - `node plugin/scripts/e2e-autoflow.mjs`（隔离真实 DSH 主动汇报与空态端到端通过，[v2-autoflow-report.json](test-results/v2-autoflow-report.json)）：
   - 日常开发会话未提插件/汇报工具即主动调用 `project_progress_report` 并通过 `exitCode === 0` 证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
   - 空项目过滤空白草稿后显示 `已有 1 个历史会话` 与全宽单色纵向可点击列表（见 [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)），点击历史会话行跳转正常；点击「快速初始化」写入 `16px` 目标；浅/深色 `16px` Tab 图标 DOM 切换正常，浏览器错误 `0`。
-- `node plugin/scripts/e2e-dsh.mjs`（HEAD 全量 `AC-01`–`AC-08` 最新回归通过，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话（含真实失败 `退出码：1` 核对与输出引用）、手动锁定防覆盖与恢复、完成/验收分离、跨会话保持、重启恢复、拖宽保持（`420px → 514px`）、未鉴权 RPC 返回 `401` 与隔离清理（原 `~/.dsh` SHA-256 一致）。
-- **正式环境安装状态**：`desktop` Profile 软链 `~/.dsh/profiles/desktop/node_modules/dsh-slate` 已指向更新后的 `plugin/`；`web` Profile 因既有 `dsh-worktable` 校验和冲突保持未改动；Git 仅本地提交，未推送、未发布 npm、未提交插件市场。
+- `node plugin/scripts/e2e-dsh.mjs`（全量 `AC-01`–`AC-08` 回归通过，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话（含真实失败 `退出码：1` 核对与输出引用）、手动锁定防覆盖与恢复、完成/验收分离、跨会话保持、重启恢复、拖宽保持（`420px → 514px`）、未鉴权 RPC 返回 `401` 与隔离清理（原 `~/.dsh` SHA-256 一致）。
+- **正式环境安装状态**：`desktop` Profile 目前仍通过本地 `link` 挂载旧包名 `dsh-slate`（待 npm 发布 `@lightcheng/dsh-slate@0.1.0` 后可按需切换安装，现有 `~/.dsh/storages/dsh-slate/` 数据完全兼容）。
 
 ## 下一步（如后续迭代）
 
-- 等待用户指示开始执行 [MARKETPLACE.md](MARKETPLACE.md) 发布流程：创建 GitHub 公开仓库并推送 `main` → 首次 npm 发布与 OIDC Trusted Publishing 配置 → 发布 `v0.1.0` GitHub Release → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。
+- **用户完成 npm 登录与 OIDC Trusted Publishing 绑定**（`light-cheng/DSH-Slate` · `release.yml`）→ **发布 GitHub Release `v0.1.0`** 验证 `release.yml` 自动发布 `@lightcheng/dsh-slate@0.1.0` → **公开仓库满 24 小时后**（`MIN_AGE_DAYS = 1`）向 `awesome-dsh-plugin` 提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml`。

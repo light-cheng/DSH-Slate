@@ -44,7 +44,7 @@ One project often spans multiple DSH sessions. Instead of opening past chats one
 ### From npm (after publishing)
 
 ```sh
-dsh plugin --profile desktop add dsh-slate
+dsh plugin --profile desktop add @lightcheng/dsh-slate
 ```
 
 ### From a local checkout (development / linking)

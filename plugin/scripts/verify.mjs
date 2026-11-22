@@ -18,6 +18,9 @@ assert.ok(Array.isArray(pkg.keywords) && pkg.keywords.includes('dsh-plugin'), 'p
 assert.equal(pkg.publishConfig?.access, 'public', 'package.json publishConfig.access must be public');
 assert.equal(pkg.exports?.['./locale/*.json'], './locale/*.json', 'package.json must export ./locale/*.json');
 
+const cordisPatch = await readFile(join(root, 'cordis.patch.yml'), 'utf8');
+assert.ok(cordisPatch.includes(pkg.name), `cordis.patch.yml must reference ${pkg.name}`);
+
 for (const localeRel of ['locale/en.json', 'locale/zh.json']) {
   const loc = JSON.parse(await readFile(join(root, localeRel), 'utf8'));
   assert.ok(typeof loc?.meta?.title === 'string' && loc.meta.title.trim(), `${localeRel} must define meta.title`);

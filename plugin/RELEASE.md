@@ -4,7 +4,7 @@ See the repository root [RELEASE.md](https://github.com/light-cheng/DSH-Slate/bl
 
 ## Publishing
 
-Creating a GitHub release in `light-cheng/DSH-Slate` publishes `plugin/` (`dsh-slate`) to npm automatically via `.github/workflows/release.yml` (npm OIDC trusted publishing, no npm token). Tag the release `vX.Y.Z`, matching `version` in `package.json`.
+Creating a GitHub release in `light-cheng/DSH-Slate` publishes `plugin/` (`@lightcheng/dsh-slate`) to npm automatically via `.github/workflows/release.yml` (npm OIDC trusted publishing, no npm token). Tag the release `vX.Y.Z`, matching `version` in `package.json`.
 
 ## v0.1.0 — Initial Release Candidate
 

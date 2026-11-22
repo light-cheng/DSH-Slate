@@ -41,7 +41,7 @@
 ### 从 npm 安装（发布后）
 
 ```sh
-dsh plugin --profile desktop add dsh-slate
+dsh plugin --profile desktop add @lightcheng/dsh-slate
 ```
 
 ### 从本地目录链接安装
