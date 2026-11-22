@@ -43,7 +43,7 @@ export const reportToolParameters = {
   properties: {
     taskId: {
       type: 'string',
-      description: '已有任务的稳定 ID（继续更新同一任务时可传入）；首次创建任务可省略。',
+      description: '已有任务的稳定 ID（继续推进、由红转绿或改名同一任务时务必传入，避免另建重复任务导致旧失败项残留）；仅在新建独立任务时省略。',
     },
     projectGoal: {
       type: 'string',

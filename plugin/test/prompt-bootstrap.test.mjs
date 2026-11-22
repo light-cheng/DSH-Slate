@@ -154,6 +154,7 @@ test('formatSlatePromptSection & registerPromptGuidance inject active state and 
           summary: '完成基础打包',
           checks: [
             { id: 'chk-smoke', title: 'Windows 真机冒烟', state: 'todo', note: '待在 Windows 执行' },
+            { id: 'chk-fail', title: 'Cask URL 校验', state: 'failed', command: 'bash scripts/validate.sh', exitCode: 1, note: '404' },
           ],
           issues: [
             { severity: 'P1', title: '签名证书缺失', detail: '需要补充环境变量' },
@@ -168,7 +169,8 @@ test('formatSlatePromptSection & registerPromptGuidance inject active state and 
     assert.match(populatedText, /桌面托盘发布工具（用户已手动锁定/);
     assert.match(populatedText, /当前验收标准（项目级，子任务汇报请省略 `acceptanceCriteria`）/);
     assert.match(populatedText, /双模式图标正常/);
-    assert.match(populatedText, /\[taskId: [^\]]+\] 构建发布流水线/);
+    assert.match(populatedText, /\[taskId: [^\]]+\] 构建发布流水线.*验收未通过/);
+    assert.match(populatedText, /未通过检查.*\[taskId: [^\]]+\] \[checkId: chk-fail\] Cask URL 校验/s);
     assert.match(populatedText, /\[checkId: chk-smoke\] Windows 真机冒烟/);
     assert.match(populatedText, /\[issueId: [^\]]+\] \[P1\] 签名证书缺失/);
 

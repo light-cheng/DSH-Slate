@@ -31,6 +31,10 @@ function normalizeText(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function normalizeCommandKey(cmd) {
+  return String(cmd || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 function normalizePriority(value, fallback = 'P1') {
   return VALID_PRIORITIES.has(value) ? value : fallback;
 }
@@ -102,6 +106,7 @@ export function createEmptyProject(workspacePath, now = new Date().toISOString()
 }
 
 function prependActivity(project, entry) {
+  if (project.activity[0] === entry) return;
   project.activity.unshift(entry);
   if (project.activity.length > MAX_ACTIVITY_ENTRIES) {
     project.activity.length = MAX_ACTIVITY_ENTRIES;
@@ -119,6 +124,14 @@ function resolveTaskId(project, input, sessionId) {
   if (titleKey) {
     const byTitle = project.tasks.find((task) => normalizeText(task.title) === titleKey);
     if (byTitle) return byTitle.id;
+  }
+  const ownUnverified = project.tasks.filter(
+    (task) =>
+      task.primarySessionId === sessionId &&
+      !evaluateTaskVerification(project, task).verified
+  );
+  if (ownUnverified.length === 1) {
+    return ownUnverified[0].id;
   }
   const seed = `${sessionId}::${titleKey || `task-${project.tasks.length + 1}`}`;
   return `task-${shortHash(seed, 10)}`;
@@ -271,9 +284,25 @@ export function applySessionReport(current, input, context) {
     const incomingCheckIds = new Set(
       input.checks.map((c) => (typeof c?.id === 'string' ? c.id.trim() : '')).filter(Boolean)
     );
+    const incomingExecutedCommands = new Set(
+      input.checks
+        .filter((c) => (c?.state === 'passed' || c?.state === 'failed') && c?.command)
+        .map((c) => normalizeCommandKey(c.command))
+        .filter(Boolean)
+    );
+    const incomingExecutedTitles = new Set(
+      input.checks
+        .filter((c) => (c?.state === 'passed' || c?.state === 'failed') && c?.title)
+        .map((c) => normalizeText(c.title))
+        .filter(Boolean)
+    );
     const hasExecutedCheck = input.checks.some(
       (c) => c?.state === 'passed' || c?.state === 'failed'
     );
+    const hasEvidencePass = input.checks.some(
+      (c) => c?.state === 'passed' && c?.verifiedBy === 'evidence'
+    );
+    const hasIncomingFailure = input.checks.some((c) => c?.state === 'failed');
     project.checks = project.checks.filter((check) => {
       if (check.taskId === taskId && check.sourceSessionId === sessionId) return false;
       if (check.taskId === taskId && incomingCheckIds.has(check.id)) return false;
@@ -284,6 +313,17 @@ export function applySessionReport(current, input, context) {
         !check.evidenceMatched
       ) {
         return false;
+      }
+      if (check.taskId === taskId && check.state === 'failed') {
+        const cmdKey = normalizeCommandKey(check.command);
+        const titleKey = normalizeText(check.title);
+        if (
+          (cmdKey && incomingExecutedCommands.has(cmdKey)) ||
+          (titleKey && incomingExecutedTitles.has(titleKey)) ||
+          (hasEvidencePass && !hasIncomingFailure && incomingWorkStatus === 'done')
+        ) {
+          return false;
+        }
       }
       return true;
     });

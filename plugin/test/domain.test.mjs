@@ -338,3 +338,137 @@ test('FR-06: cross-session executed checks replace stale todo placeholders while
   assert.equal(project.checks.filter((c) => c.state === 'passed').length, 2);
   assert.equal(project.checks.filter((c) => c.state === 'todo').length, 1);
 });
+
+test('TDD red-to-green reuses unverified session task without taskId, clears superseded failed checks, and deduplicates activity', () => {
+  let project = createEmptyProject('/tmp/proj-tdd');
+  // 1. Same-session TDD red-to-green rename WITHOUT taskId
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '导出 CSV 测试（TDD 红）',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '实现 Ledger#exportCsv() 使 test/export.test.js 转绿',
+      summary: '新增失败测试',
+      checks: [
+        { title: 'node --test 确认新导出测试失败', state: 'failed', command: 'node --test', exitCode: 1, note: '2 failed' },
+      ],
+    },
+    { sessionId: 'session-tdd-1111', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:34:00.000Z' }
+  ));
+  assert.equal(project.tasks.length, 1);
+  assert.equal(buildProjectView(project).priorityItem?.kind, 'check');
+
+  // Same session fixes and renames task WITHOUT passing taskId
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '实现 Ledger#exportCsv（CSV 导出）',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '无，CSV 导出已完成',
+      summary: '实现 exportCsv 并全部测试通过',
+      checks: [
+        { title: 'node --test 全部测试通过', state: 'passed', command: 'node --test', exitCode: 0, verifiedBy: 'evidence', evidenceMatched: true, note: '12 pass' },
+      ],
+    },
+    { sessionId: 'session-tdd-1111', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:35:00.000Z' }
+  ));
+
+  let view = buildProjectView(project);
+  assert.equal(view.tasks.length, 1);
+  assert.equal(view.tasks[0].title, '实现 Ledger#exportCsv（CSV 导出）');
+  assert.equal(view.tasks[0].verified, true);
+  assert.equal(view.tasks[0].hasFailedCheck, false);
+  assert.equal(view.priorityItem, null);
+  assert.equal(project.checks.length, 1);
+  assert.equal(project.checks[0].state, 'passed');
+
+  // 2. Once task is verified, a subsequent unrelated report in the same session WITHOUT taskId starts a new task
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '补充文档',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '无',
+      summary: '更新 README',
+    },
+    { sessionId: 'session-tdd-1111', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:36:00.000Z' }
+  ));
+  assert.equal(project.tasks.length, 2);
+
+  // 3. Cross-session Red -> downgraded todo (must keep failed) -> Green on same taskId
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '修复筛选边界',
+      workStatus: 'in_progress',
+      progressEstimate: 30,
+      nextDeliverable: '修复边界断言',
+      summary: '复现失败',
+      checks: [
+        { title: '筛选测试', state: 'failed', command: 'node --test test/filter.test.js', exitCode: 1, note: '1 failed' },
+      ],
+    },
+    { sessionId: 'session-b-2222', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:37:00.000Z' }
+  ));
+  const filterTaskId = project.tasks[2].id;
+
+  // Session C reports a downgraded todo check -> must NOT clear Session B's failed check
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId: filterTaskId,
+      task: '修复筛选边界',
+      workStatus: 'done',
+      progressEstimate: 90,
+      nextDeliverable: '复跑筛选测试',
+      summary: '口头汇报通过但未运行命令',
+      checks: [
+        { title: '筛选测试', state: 'todo', command: 'node --test test/filter.test.js', note: '未实际运行' },
+      ],
+    },
+    { sessionId: 'session-c-3333', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:38:00.000Z' }
+  ));
+  view = buildProjectView(project);
+  assert.equal(view.tasks[2].hasFailedCheck, true);
+  assert.equal(view.tasks[2].verified, false);
+
+  // Session D runs real passing check on filterTaskId -> supersedes failed check
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId: filterTaskId,
+      task: '修复筛选边界',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '已完成',
+      summary: '实测通过',
+      checks: [
+        { title: '全量测试', state: 'passed', command: 'node --test', exitCode: 0, verifiedBy: 'evidence', evidenceMatched: true, note: '14 pass' },
+      ],
+    },
+    { sessionId: 'session-d-4444', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:39:00.000Z' }
+  ));
+  view = buildProjectView(project);
+  assert.equal(view.tasks[2].verified, true);
+  assert.equal(view.tasks[2].hasFailedCheck, false);
+  assert.equal(view.priorityItem, null);
+
+  // 4. Adjacent duplicate activity deduplication
+  const countBefore = project.activity.length;
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId: filterTaskId,
+      task: '修复筛选边界',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '已完成',
+      summary: '实测通过',
+    },
+    { sessionId: 'session-d-4444', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:40:00.000Z' }
+  ));
+  assert.equal(project.activity.length, countBefore);
+});

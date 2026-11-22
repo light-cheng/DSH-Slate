@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**Release-ready 收口完成（暂未推送远端也未发布 npm）——已完成插件市场中英双语简介与详情页、以及未初始化工作区历史会话过滤（排除已归档/无当前日志/草稿/子代理并同步客户端实时列表），通过全套单元及最新隔离 DSH 端到端实测，待用户重启桌面端复测后发布。**
+当前阶段：**Release-ready 收口完成（暂未推送远端也未发布 npm）——已修复同一/跨会话 TDD 由红转绿任务复用与旧失败检查自动替换、相邻重复动态去重、插件市场中英双语简介与详情页、以及未初始化工作区纵向可展开历史会话，通过 `14/14` 单元及隔离 DSH 端到端实测，待用户重启桌面端完成第 4–5 步复测后发布。**
 
 ## 从这里开始
 
@@ -39,11 +39,10 @@ npm pack --dry-run
 ## 本轮已验证项
 
 - **发布前逻辑修复与元数据收口**：
-  - `src/domain.js`：同一 `taskId` 收到后续会话真实 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位（保留其他会话真实证据，支持按 `check.id` 跨会话精确替换）。
-  - `src/prompt.js` & `src/tool.js`：向会话同步当前项目级 `acceptanceCriteria` 与 `todo` 待检查清单，并指导子任务汇报省略 `projectGoal`/`acceptanceCriteria`，防止单个子任务覆盖项目级验收标准。
+  - `src/domain.js`、`src/prompt.js` & `src/tool.js`：同一 `taskId` 收到后续实测 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位及已被同命令/同标题/实测通过并完成替代的旧 `failed` 检查；`resolveTaskId` 在同一会话已有唯一未验收任务且未传 `taskId` 时自动复用（修复 TDD 红转绿改名产生重复红灯卡片）；相邻重复动态去重；系统提示暴露「未通过检查」(`taskId`/`checkId`) 并引导子任务汇报省略 `projectGoal`/`acceptanceCriteria`。
   - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题，空态历史会话改用全宽纵向行表展示并默认显示 3 条，支持 `展开其余 N 个` / `收起` 查看全部，Quick Init prompt 仍严格上限 5 条引用。
   - `locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、双语 README、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪。
-- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63476` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `13/13` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
+- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63476` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `14/14` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
 - `node plugin/scripts/e2e-autoflow.mjs`（最新隔离真实 DSH 验收，[v2-autoflow-report.json](test-results/v2-autoflow-report.json)）：
   - 日常开发会话未提插件/汇报工具即主动调用 `project_progress_report` 并通过 `exitCode === 0` 证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
   - 空项目过滤空白草稿后显示 `已有 1 个历史会话` 与全宽单色纵向可点击列表（见 [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)），且在 Playwright 中实测点击历史会话行成功跳转至目标会话并保持右侧「项目进度」打开；点击「快速初始化」写入 `16px` 目标；浅/深色 `16px` Tab 图标切换正常，浏览器错误 `0`。
@@ -52,5 +51,5 @@ npm pack --dry-run
 
 ## 下一步（如后续迭代）
 
-- 用户**刷新/重启 DeepSeek Harness 桌面端**后继续第 1–5 步复测：重点确认 `EasyRight` 空态显示 `已有 5 个历史会话` 全宽纵向列表与右上角 `展开其余 2 个` / `收起` 切换、以及一键「快速初始化」和后续跨会话/子任务汇报。
+- 用户**重启 DeepSeek Harness 桌面端**后继续第 4–5 步复测：重点确认 TDD 红→绿改名不复制红灯任务、实测通过后替换旧失败检查、以及手动锁定/恢复/拖宽/深浅色切换。
 - 确认通过后按 [MARKETPLACE.md](MARKETPLACE.md) 执行：创建 GitHub 公开仓库并推送 `main` → 配置 npm OIDC Trusted Publishing → 发布 `v0.1.0` Release 自动发布 npm → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。
