@@ -39,7 +39,7 @@ npm pack --dry-run
 ## 本轮已验证项
 
 - **发布前逻辑修复与元数据收口**：
-  - `src/domain.js`、`src/prompt.js` & `src/tool.js`：同一 `taskId` 收到后续实测 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位及已被同命令/同标题/实测通过并完成替代的旧 `failed` 检查；`resolveTaskId` 在同一会话已有唯一未验收任务且未传 `taskId` 时自动复用（修复 TDD 红转绿改名产生重复红灯卡片）；相邻重复动态去重；系统提示暴露「未通过检查」(`taskId`/`checkId`) 并引导子任务汇报省略 `projectGoal`/`acceptanceCriteria`。
+  - `src/domain.js`、`src/prompt.js` & `src/tool.js`：同一 `taskId` 收到后续实测 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位及已被同命令/同标题/实测通过并完成替代的旧 `failed` 检查；`resolveTaskId` 在同一会话已有唯一未验收任务且未传 `taskId` 时自动复用（修复 TDD 红转绿改名产生重复红灯卡片）；用户手动点击「验收通过」的任务，其历史 `failed` 检查从顶部「优先处理」与提示词「未通过检查」中忽略（同时在 `验收记录` 如实保留历史 `failed` 记录）；相邻重复动态去重；引导子任务汇报省略 `projectGoal`/`acceptanceCriteria`。
   - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题，空态历史会话改用全宽纵向行表展示并默认显示 3 条，支持 `展开其余 N 个` / `收起` 查看全部，Quick Init prompt 仍严格上限 5 条引用。
   - `locale/{en,zh}.json`、`docs/plugin-page.{en,zh-CN}.md`、双语 README、`RELEASE.md`、`MARKETPLACE.md`、`LICENSE`、`screenshots.json`（6 张）及 `.github/workflows/{ci,release}.yml` 就绪。
 - `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`63476` bytes），发布元数据、`icon`、6 张截图、`screenshots.json`、单色规则与 `14/14` 单元/并发测试全部通过；打包产物不含 `prototype-plugin/`、`test/` 与临时文件。
@@ -51,5 +51,4 @@ npm pack --dry-run
 
 ## 下一步（如后续迭代）
 
-- 用户**重启 DeepSeek Harness 桌面端**后继续第 4–5 步复测：重点确认 TDD 红→绿改名不复制红灯任务、实测通过后替换旧失败检查、以及手动锁定/恢复/拖宽/深浅色切换。
-- 确认通过后按 [MARKETPLACE.md](MARKETPLACE.md) 执行：创建 GitHub 公开仓库并推送 `main` → 配置 npm OIDC Trusted Publishing → 发布 `v0.1.0` Release 自动发布 npm → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。
+- 用户**重启 DeepSeek Harness 桌面端**打开 `pocket-ledger` 确认顶部遗留的「优先处理 · 失败」自动消退（可在 `pocket-ledger` 再确认是否需要清理测试面板），随后确认是否开始发布：创建 GitHub 公开仓库并推送 `main` → 配置 npm OIDC Trusted Publishing → 发布 `v0.1.0` Release 自动发布 npm → 向 `awesome-dsh-plugin` 提交 `light-cheng__DSH-Slate.yml`。

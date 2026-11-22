@@ -78,8 +78,9 @@ export function formatSlatePromptSection(project) {
     }
   }
 
+  const verifiedTaskIds = new Set(view.tasks.filter((task) => task.verified).map((task) => task.id));
   const failedChecks = Array.isArray(view.checks)
-    ? view.checks.filter((check) => check.state === 'failed')
+    ? view.checks.filter((check) => check.state === 'failed' && !verifiedTaskIds.has(check.taskId))
     : [];
   if (failedChecks.length > 0) {
     lines.push('- 未通过检查（修复并实测通过后，务必沿用对应 `taskId` 汇报以替换旧失败记录）：');

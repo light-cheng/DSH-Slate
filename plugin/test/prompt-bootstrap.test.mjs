@@ -10,7 +10,7 @@ import {
   collectWorkspaceContext,
   detectOverviewFiles,
 } from '../src/bootstrap.js';
-import { applySessionReport, createEmptyProject, updateGoal } from '../src/domain.js';
+import { applySessionReport, createEmptyProject, updateGoal, verifyTask } from '../src/domain.js';
 import {
   formatSlatePromptSection,
   PROMPT_SECTION_NAME,
@@ -173,6 +173,15 @@ test('formatSlatePromptSection & registerPromptGuidance inject active state and 
     assert.match(populatedText, /未通过检查.*\[taskId: [^\]]+\] \[checkId: chk-fail\] Cask URL 校验/s);
     assert.match(populatedText, /\[checkId: chk-smoke\] Windows 真机冒烟/);
     assert.match(populatedText, /\[issueId: [^\]]+\] \[P1\] 签名证书缺失/);
+
+    // Explicit user verification suppresses chk-fail from active 未通过检查 guidance
+    await store.mutate(ws, (current, helpers) => {
+      const targetId = current.tasks[0].id;
+      return verifyTask(current, { taskId: targetId }, helpers.now);
+    });
+    const verifiedPromptText = section.text({ agent: { id: 's2', session: { header: { id: 's2', cwd: ws } } } });
+    assert.equal(verifiedPromptText.includes('chk-fail'), false);
+    assert.equal(verifiedPromptText.includes('未通过检查'), false);
 
     // Tool disabled in agent preset -> returns empty string
     toolEnabled = false;

@@ -178,8 +178,10 @@ test('FR-05 & AC-04: evidence verification enforces real exitCode===0 and separa
   assert.equal(view.summary.awaitingAcceptanceCount, 1);
   assert.equal(view.summary.verifiedCount, 0);
   assert.equal(view.latestVerified, null);
+  assert.equal(view.priorityItem?.kind, 'check');
+  assert.equal(view.priorityItem?.severity, '失败');
 
-  // Explicit user confirmation marks it verified
+  // Explicit user confirmation marks it verified and clears priority focus while keeping historical check honest
   project = verifyTask(project, { taskId });
   view = buildProjectView(project);
   assert.equal(view.tasks[0].verified, true);
@@ -187,6 +189,8 @@ test('FR-05 & AC-04: evidence verification enforces real exitCode===0 and separa
   assert.equal(view.summary.awaitingAcceptanceCount, 0);
   assert.equal(view.summary.verifiedCount, 1);
   assert.equal(view.latestVerified.taskId, taskId);
+  assert.equal(view.priorityItem, null);
+  assert.equal(project.checks[0].state, 'failed');
 });
 
 test('FR-06 & FR-08: stable issue IDs deduplicate updates, rank priority focus, and support multi-session tasks', () => {

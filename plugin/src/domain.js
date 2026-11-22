@@ -586,6 +586,8 @@ function selectPriorityFocus(project, tasksById) {
 
   for (const check of project.checks) {
     if (check.state !== 'failed') continue;
+    const ownerTask = check.taskId ? tasksById.get(check.taskId) : null;
+    if (ownerTask?.verified) continue;
     candidates.push({
       rank: 1,
       kind: 'check',
