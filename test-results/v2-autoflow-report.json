@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "hostVersion": "0.2.2-rc.5",
+  "model": "magpie / auto/deepseek-v4.1-flash",
+  "scenarioA": {
+    "sessionId": "session-84b88891-9786-452c-88f2-ffb9ea7a791d",
+    "proactiveReportCalls": 1,
+    "revision": 1,
+    "goal": "修复 calc 求和函数并通过全部测试",
+    "taskCount": 1,
+    "evidenceVerifiedChecks": 1
+  },
+  "scenarioB": {
+    "priorSessionId": "session-2248b56a-4488-4724-bf81-b4d5f1053355",
+    "uiSessionId": "session-031b1e38-3124-4384-9774-0c40849b42ec",
+    "afterInitMetrics": {
+      "goalText": "构建轻量跨平台托盘窗口定位工具",
+      "goalFontSize": 16,
+      "taskCount": 2,
+      "criteriaCount": 6,
+      "bootstrapStillVisible": false
+    },
+    "lightIconState": {
+      "lightDisplay": "block",
+      "lightLoaded": true,
+      "darkDisplay": "none"
+    },
+    "darkIconState": {
+      "lightDisplay": "none",
+      "darkDisplay": "block",
+      "darkLoaded": true,
+      "rootBg": "rgb(21, 21, 23)"
+    }
+  },
+  "browserErrors": [],
+  "isolatedProfilesUntouched": true,
+  "capturedAt": "2026-11-22T01:02:46.892Z"
+}

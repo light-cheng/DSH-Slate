@@ -1,10 +1,10 @@
 # 测试基线与隔离验收报告
 
-> **证据区分说明**：本文件同时记录两类材料——**本轮正式插件（`plugin/`）的新执行验收结果（`v1-*`）** 与 **早期原型阶段（`prototype-plugin/`）的历史基线**，两者严格区分，不以原型结果冒充正式实现验收。
+> **证据区分说明**：本文件同时记录两类材料——**正式插件（`plugin/`）的新执行验收结果（`v1-*` 与 `v2-*`）** 与 **早期原型阶段（`prototype-plugin/`）的历史基线**，两者严格区分，不以原型结果冒充正式实现验收。
 
 ## 隔离测试环境规范
 
-正式插件（`plugin/`）的自动化端到端验收通过 `node plugin/scripts/e2e-dsh.mjs` 运行，严格遵守以下隔离边界：
+正式插件（`plugin/`）的自动化端到端验收通过 `node plugin/scripts/e2e-dsh.mjs` 与 `node plugin/scripts/e2e-autoflow.mjs` 运行，严格遵守以下隔离边界：
 
 - **宿主 CLI**：`/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`（`0.2.2-rc.5`）。
 - **独立环境**：每次运行在 `.tmp/e2e-*` 下新建临时 `DSH_HOME`、全新 Profile（`slate-web` 与 `slate-headless`）及临时项目目录（`workspace-empty`、`workspace-bookstore`），通过 `link:` 仅挂载到临时 Profile。
@@ -41,6 +41,18 @@
 | `AC-06` | 刷新、DSH 重启恢复与并发写入 | **PASS**（`page.reload()` 及关闭并重启临时 Web 服务后 3 项任务与最新状态完整恢复；并发 6 进程与并行订单/自取会话 0 丢更新） | [v1-e2e-report.json](test-results/v1-e2e-report.json) |
 | `AC-07` | 视觉、单色、栏宽保持与键盘可达性 | **PASS**（初始栏宽 `420px`，拖宽至 `514px` 后跨导航保持 `514px`；正文 `14px`、辅助 `12px`；编辑区暗底白字 `rgb(15,17,21)`/`rgb(255,255,255)` 无蓝色；浅色 `rgb(255,255,255)` 与深色 `rgb(21,21,23)` 均无错误；键盘 `Enter` 展开详情与聚焦态通过；未认证 RPC 返回 HTTP `401`） | [v1-03-dark-overview.png](previews/v1-03-dark-overview.png)、[v1-04-edit-neutral.png](previews/v1-04-edit-neutral.png)、[v1-06-evidence-detail.png](previews/v1-06-evidence-detail.png) |
 | `AC-08` | 隔离与环境清理 | **PASS**（临时 `.tmp/e2e-*` 已清空，浏览器 `pageerror`/`console.error` 均为 `0`，原 `~/.dsh` `desktop`、`web` 校验前后一致） | [v1-e2e-report.json](test-results/v1-e2e-report.json) |
+
+### 3. v0.2 增量验证：主动汇报与轻量冷启动（最新新执行）
+
+- **构建与单测重跑（`cd plugin && npm run verify`）**：
+  - 生成 `lib/client.js`（`58221` bytes），`package.json` `"icon"` 声明、5 张 PNG 幻数校验与单色规则校验全部通过。
+  - `12/12` 自动化测试全部通过（在既有 8 项基础上新增 `store.readSync`、`formatSlatePromptSection`/`registerPromptGuidance` 工具门控、`collectGitSnapshot`/`collectWorkspaceContext`/`buildQuickInitPrompt`，以及 `getWorkspaceContext`/`quickInit` RPC 契约测试）。
+- **真实 DSH `0.2.2-rc.5` 端到端自动汇报与快速初始化（`node plugin/scripts/e2e-autoflow.mjs`）**：[v2-autoflow-report.json](test-results/v2-autoflow-report.json)
+
+| 场景 | 实测结果 | 证据文件 / 截图 |
+|---|---|---|
+| 场景 A · 日常会话零提示词主动汇报 | **PASS**（普通提示让真实会话修复 `src/calc.js` 并跑 `node --test`，未提及 Slate 或汇报工具；模型通过 `systemPrompt.section` 主动调用 `project_progress_report` `1` 次，写入 `revision: 1`、目标「修复 calc 求和函数并通过全部测试」及 `1` 项真实退出码为 `0` 的证据通过记录；独立重跑 `node --test` `1/1` 通过） | [v2-autoflow-report.json](test-results/v2-autoflow-report.json)、[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt) |
+| 场景 B · 空项目零 token 线索 + 一键快速初始化 + 双主题图标 | **PASS**（两段纯只读会话保持 `revision: 0`；空项目侧栏展示分支 `main`、标签 `v0.1.0`、最近提交 `be72675` 与 `已有 2 个历史会话`，浅色模式正确显示 `.sl-tab-icon-light`；点击「快速初始化」后仅用 2 步完成概览读取并自动写入 `16px` 紧凑目标「构建轻量跨平台托盘窗口定位工具」与未检查基线项；切暗色后正确切换为 `.sl-tab-icon-dark`（`rgb(21, 21, 23)`）；`0` 浏览器错误，临时环境已清空且原 `~/.dsh` 一致） | [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)、[v2-02-after-quick-init-light.png](previews/v2-02-after-quick-init-light.png)、[v2-03-after-quick-init-dark.png](previews/v2-03-after-quick-init-dark.png) |
 
 ---
 

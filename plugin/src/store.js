@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, realpathSync, watch } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, watch } from 'node:fs';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -227,6 +227,25 @@ export function createProjectStore(options = {}) {
     async read(rawWorkspacePath) {
       const { canonical, filePath } = pathsFor(rawWorkspacePath);
       return readExistingOrEmpty(filePath, canonical);
+    },
+
+    /**
+     * Synchronously read the persisted project state for prompt section rendering.
+     * Falls back to an empty project view if missing or unreadable.
+     * @param {string} rawWorkspacePath
+     */
+    readSync(rawWorkspacePath) {
+      const { canonical, filePath } = pathsFor(rawWorkspacePath);
+      try {
+        const text = readFileSync(filePath, 'utf8');
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object' && parsed.workspacePath) {
+          return parsed;
+        }
+      } catch {
+        // Return empty project snapshot when state file is missing or unreadable.
+      }
+      return createEmptyProject(canonical);
     },
 
     /**

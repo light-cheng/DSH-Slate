@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**v0.1 正式插件实施与 `AC-01`–`AC-08` 隔离验收已完成，双主题（M1 深 / M2 浅）Slate 图标已接入并重验通过，已本地链接安装至 `desktop` Profile，待真实项目手动实测。**
+当前阶段：**v0.2 主动汇报引导、零 token 工作区线索与一键「快速初始化」及目标排版收敛已实施并完成真机隔离 E2E 验收；`desktop` Profile 软链实时生效。**
 
 ## 从这里开始
 
@@ -15,14 +15,14 @@ npm run verify
 
 ## 目录结构
 
-- [plugin/](plugin/)：正式生产插件目录（`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/evidence.js`、`src/domain.js`、`src/store.js`、`src/tool.js`、`src/rpc.js`、`src/client.js`、`src/styles.css`、`lib/client.js`、`scripts/build.mjs`、`scripts/verify.mjs`、`scripts/e2e-dsh.mjs`、`test/*.test.mjs`）。
+- [plugin/](plugin/)：正式生产插件目录（`index.js`、`icon.png`、`assets/icon-{dark,light}.png`、`assets/tab-icon-{dark,light}.png`、`src/evidence.js`、`src/domain.js`、`src/store.js`、`src/prompt.js`、`src/bootstrap.js`、`src/tool.js`、`src/rpc.js`、`src/client.js`、`src/styles.css`、`lib/client.js`、`scripts/build.mjs`、`scripts/verify.mjs`、`scripts/e2e-dsh.mjs`、`scripts/e2e-autoflow.mjs`、`test/*.test.mjs`）。
 - [prototype-plugin/](prototype-plugin/)：早期原型代码（只作历史参考，未修改也未用于生产）。
-- [SPEC.md](SPEC.md)：正式需求规格、领域模型与 `AC-01`–`AC-08` 验收标准（v0.2）。
+- [SPEC.md](SPEC.md)：正式需求规格、领域模型与 `AC-01`–`AC-08` 验收标准（v0.2，含 `FR-09`）。
 - [AGENTS.md](AGENTS.md)：编码 Agent 约束与隔离测试约定。
 - [direction-approved.md](direction-approved.md)：已批准的原生 DSH 石墨单色视觉基准。
 - [TESTING.md](TESTING.md)：正式验收矩阵、新执行证据与历史原型基线记录。
-- [previews/](previews/)：包含本轮正式实现新截获的 6 张截图（`v1-01-empty.png` 至 `v1-06-evidence-detail.png`）及原型阶段历史基线截图。
-- [test-results/](test-results/)：包含本轮正式实现新执行输出（`v1-e2e-report.json`、`v1-orders-pickup-independent.txt`、`v1-mobile-independent.txt`、`v1-manual-preservation.txt`）及原型阶段历史基线记录。
+- [previews/](previews/)：包含 `v1-01`–`v1-06` 与本轮 `v2-01`–`v2-03` 正式实测截图，及原型阶段历史基线截图。
+- [test-results/](test-results/)：包含 `v1-*` 与本轮 `v2-autoflow-report.json`、`v2-autoflow-independent.txt` 正式输出，及原型阶段历史基线记录。
 
 ## 已核实的 DSH `0.2.2-rc.5` 宿主接口与实测结论
 
@@ -35,16 +35,18 @@ npm run verify
 
 ## 本轮已验证项
 
-- **图标与双主题集成**：接入定稿 M1（矿石青灰深色）与 M2（浅雾石板浅色）图标——`plugin/package.json` 声明默认 `"icon": "./icon.png"`（`256×256` RGBA），`plugin/assets/` 保存 `512×512` 与 `48×48` 双色资源；`plugin/README.md` 通过 `<picture>` 随 `prefers-color-scheme` 切换；`src/client.js` `TabTitle` 嵌入 `16×16` 图标并随宿主 `body[data-ds-dark-theme]` 自动切换。
-- `npm run verify`（接入图标后最新重跑）：构建 `lib/client.js`（53417 bytes），PNG 幻数与 `package.json` `"icon"` 声明校验通过，单色正则校验通过，`8/8` 单元与 6 进程并发集成测试全部通过。
+- **v0.2 自动汇报、冷启动线索与紧凑排版**：
+  - `src/prompt.js` 通过 `ctx.inject(['systemPrompt'], ...)` 条件注册 `dsh-slate:project-progress` 动态片段，携带工作区 `taskId`、目标锁定状态与开放问题，并在 `tools.get('project_progress_report', agent)` 不可用时自动退避。
+  - `src/bootstrap.js` 通过 `git` 只读快照（`execFile` 无 shell 拼接）与会话注册表提供零 token 工作区线索，并通过受控单步提示与 `typertGateway`（`session/create` + `session/prompt` 携带 `connection.browserPeer`）实现一键「快速初始化」。
+  - `src/tool.js` 与 `src/styles.css` 收敛 `projectGoal` 一句话简短描述（建议 25 字以内）与 `16px` 标题字号，空项目卡片保持纯单色。
+- `npm run verify`（最新运行）：构建 `lib/client.js`（`58221` bytes），PNG 幻数与 `package.json` `"icon"` 声明校验通过，单色正则校验通过，`12/12` 单元、Prompt/冷启动与 6 进程并发集成测试全部通过。
+- `node plugin/scripts/e2e-autoflow.mjs`（最新隔离真实 DSH 验收，[v2-autoflow-report.json](test-results/v2-autoflow-report.json)）：
+  - 日常开发会话在**未提及插件/汇报工具**下主动触发 `project_progress_report` 并完成证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
+  - 空项目正确展示零 token Git/历史会话提示，点击「快速初始化」通过真实 `typertGateway` 以 2 步完成项目初始化；浅/深色 `16px` Tab 图标自动切换正常，浏览器错误为 `0`（[v2-01-empty-hints.png](previews/v2-01-empty-hints.png)、[v2-02-after-quick-init-light.png](previews/v2-02-after-quick-init-light.png)、[v2-03-after-quick-init-dark.png](previews/v2-03-after-quick-init-dark.png)）。
 - **正式环境安装状态**：`desktop` Profile 已通过 `dsh plugin --profile desktop add link:/Users/light/Documents/Projects/Agent/DSH-Slate/plugin` 链接安装，`~/.dsh/profiles/desktop/node_modules/dsh-slate` 直接指向仓库 `plugin/`，更新文件与重构建实时生效；`web` Profile 因已有依赖 `dsh-worktable` 的浮动 GitHub release 校验和触发 `ERR_PNPM_TARBALL_INTEGRITY` 而保持未改动。
-- `node plugin/scripts/e2e-dsh.mjs`（v0.1 接入图标前跑通的全新临时 `DSH_HOME`、`slate-web`、`slate-headless`、Magpie `auto/deepseek-v4.1-flash`）：
-  - `AC-01`–`AC-08` 全部通过（[v1-e2e-report.json](test-results/v1-e2e-report.json)）。
-  - 独立重跑订单与自取测试 `6/6` 通过（[v1-orders-pickup-independent.txt](test-results/v1-orders-pickup-independent.txt)）；移动端测试 `1/1` 如实失败（[v1-mobile-independent.txt](test-results/v1-mobile-independent.txt)）。
-  - 手动调整保护与「恢复会话汇报」校验通过（[v1-manual-preservation.txt](test-results/v1-manual-preservation.txt)）。
-  - 浏览器 `pageerror` 与 `console.error` 均为 `0`；未认证 RPC 被 HTTP `401` 拒绝；临时目录已清理，原 `~/.dsh` 的 `desktop`、`web` 未受任何影响。
+- `node plugin/scripts/e2e-dsh.mjs`（v0.1 `AC-01`–`AC-08` 基线验收，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话、手动调整保护、完成/验收分离、跨会话保持、重启恢复、栏宽保持与隔离清理。
 
 ## 下一步（如后续迭代）
 
-- 用户在 **DeepSeek Harness 桌面端** 真实项目中实测右侧栏「项目进度」面板、深/浅色切换下的 `TabTitle` 图标以及工具真实汇报；如决定同时安装至 `web` Profile，需先经用户确认处理 `dsh-worktable` lockfile 校验和冲突。
-- 若需接通端到端真实人类用户确认、任务依赖图或新 DSH 版本适配，按 `AGENTS.md` 在独立分支或新提交上扩展并重跑 `npm run verify` 与 `node plugin/scripts/e2e-dsh.mjs`。
+- 用户在 **DeepSeek Harness 桌面端** 重启后可直接在旧项目侧栏体验「快速初始化」及后续会话的自动进度汇报。
+- 如决定同时安装至 `web` Profile，需先经用户确认处理 `dsh-worktable` lockfile 校验和冲突；若需再次全量核对 `AC-01`–`AC-08`，可重跑 `node plugin/scripts/e2e-dsh.mjs`。

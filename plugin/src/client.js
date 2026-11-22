@@ -101,6 +101,8 @@ function App(props) {
   const workspacePath = boundWorkspacePath || sessionCwd || '';
 
   const [project, setProject] = useState(EMPTY_VIEW);
+  const [workspaceContext, setWorkspaceContext] = useState(null);
+  const [initStatus, setInitStatus] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -117,12 +119,16 @@ function App(props) {
   const rootRef = useRef(null);
   const latestRevisionRef = useRef(-1);
   const latestWorkspaceRef = useRef('');
+  const contextSeqRef = useRef(0);
 
   const applyView = useCallback((view) => {
     if (!view) return;
     latestRevisionRef.current = view.revision ?? 0;
     latestWorkspaceRef.current = view.workspacePath || '';
     setProject(view);
+    if (view.goal || (view.tasks && view.tasks.length > 0)) {
+      setInitStatus('');
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -135,11 +141,30 @@ function App(props) {
     }
   }, [callRpc, sessionId, workspacePath, applyView]);
 
+  const loadWorkspaceContext = useCallback(async () => {
+    const seq = ++contextSeqRef.current;
+    if (!workspacePath && !sessionId) {
+      setWorkspaceContext(null);
+      return;
+    }
+    try {
+      const ctxInfo = await callRpc('getWorkspaceContext', { sessionId, workspacePath });
+      if (seq === contextSeqRef.current) {
+        setWorkspaceContext(ctxInfo || null);
+      }
+    } catch {
+      // Zero-token workspace context is advisory only; keep empty state interactive on failure.
+    }
+  }, [callRpc, sessionId, workspacePath]);
+
   useEffect(() => {
     latestRevisionRef.current = -1;
     setError('');
+    setInitStatus('');
+    setWorkspaceContext(null);
     refresh();
-  }, [refresh]);
+    loadWorkspaceContext();
+  }, [refresh, loadWorkspaceContext]);
 
   useEffect(() => {
     let source = null;
@@ -229,6 +254,22 @@ function App(props) {
     );
 
   const restoreGoal = () => runMutation('restoreGoal', {});
+
+  const runQuickInit = useCallback(async () => {
+    setBusy(true);
+    try {
+      const res = await callRpc('quickInit', { sessionId, workspacePath });
+      setError('');
+      setInitStatus('已发起快速初始化，正在读取项目概览…');
+      if (res?.sessionId) {
+        openSession(res.sessionId);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  }, [callRpc, sessionId, workspacePath, openSession]);
 
   const startTaskEdit = (task) => {
     setEditingTaskId(task.id);
@@ -445,7 +486,10 @@ function App(props) {
         type: 'button',
         className: 'sl-text-btn sl-refresh',
         disabled: busy,
-        onClick: refresh,
+        onClick: () => {
+          refresh();
+          loadWorkspaceContext();
+        },
       }, '刷新')
     ),
     h('div', { className: `sl-notice ${error ? 'is-error' : ''}`, role: error ? 'alert' : undefined }, error || updatedText),
@@ -478,7 +522,55 @@ function App(props) {
             ? h('ul', { className: 'sl-criteria-list' },
                 project.acceptanceCriteria.map((criterion, idx) => h('li', { key: `${idx}-${criterion}` }, criterion))
               )
-            : h('div', { className: 'sl-editor-note' }, '等待第一次会话汇报或手动填写验收标准')
+            : (!project.goal && tasks.length === 0 && checks.length === 0 && issues.length === 0)
+              ? h('div', { className: 'sl-bootstrap' },
+                  h('p', { className: 'sl-bootstrap-desc' }, '尚未记录项目进度。日常开发与测试会话会自动汇报，也可立即初始化当前工作区：'),
+                  (workspaceContext?.git || (workspaceContext?.recentSessions || []).length > 0)
+                    ? h('div', { className: 'sl-bootstrap-meta' },
+                        workspaceContext?.git
+                          ? h('div', null, [
+                              `分支 ${workspaceContext.git.branch}`,
+                              workspaceContext.git.latestTag ? `标签 ${workspaceContext.git.latestTag}` : '',
+                              workspaceContext.git.dirtyCount > 0 ? `${workspaceContext.git.dirtyCount} 处未提交改动` : '',
+                            ].filter(Boolean).join(' · '))
+                          : null,
+                        workspaceContext?.git?.recentCommits?.[0]
+                          ? h('div', null, `最近提交：${workspaceContext.git.recentCommits[0].sha} ${workspaceContext.git.recentCommits[0].subject}`)
+                          : null,
+                        (workspaceContext?.recentSessions || []).length > 0
+                          ? h('div', { className: 'sl-bootstrap-sessions' },
+                              h('span', null, `已有 ${workspaceContext.totalSessions} 个历史会话：`),
+                              workspaceContext.recentSessions.slice(0, 3).map((item) =>
+                                h('button', {
+                                  key: item.id,
+                                  type: 'button',
+                                  className: 'sl-text-btn',
+                                  onClick: () => openSession(item.id),
+                                }, item.label)
+                              )
+                            )
+                          : null
+                      )
+                    : null,
+                  h('div', { className: 'sl-bootstrap-actions' },
+                    workspaceContext?.canQuickInit
+                      ? h('button', {
+                          type: 'button',
+                          className: 'sl-btn-primary',
+                          disabled: busy,
+                          onClick: runQuickInit,
+                        }, '快速初始化')
+                      : null,
+                    h('button', {
+                      type: 'button',
+                      className: 'sl-btn',
+                      disabled: busy,
+                      onClick: openGoalEditor,
+                    }, '手动填写目标')
+                  ),
+                  initStatus ? h('div', { className: 'sl-editor-note' }, initStatus) : null
+                )
+              : h('div', { className: 'sl-editor-note' }, '暂无验收标准，可点击「编辑」补充')
         ),
 
     h('section', { className: 'sl-summary', 'aria-label': '任务概况' },

@@ -39,9 +39,13 @@ const css = await readFile(join(root, 'src', 'styles.css'), 'utf8');
 assert.equal(/#(?:338a65|4e745d|4176e6|5268c7|f5f1e9)/i.test(css), false, 'styles.css must not retain prototype green, blue, or paper colors');
 
 // 3. Execute all unit & multi-process integration tests
-execFileSync(process.execPath, ['--test', 'test/domain.test.mjs', 'test/store.test.mjs', 'test/rpc.test.mjs'], {
-  cwd: root,
-  stdio: 'inherit',
-});
+execFileSync(
+  process.execPath,
+  ['--test', 'test/domain.test.mjs', 'test/store.test.mjs', 'test/rpc.test.mjs', 'test/prompt-bootstrap.test.mjs'],
+  {
+    cwd: root,
+    stdio: 'inherit',
+  }
+);
 
 console.log('[dsh-slate verify] build, syntax, monochrome check, and unit/concurrency tests PASSED');

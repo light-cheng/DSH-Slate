@@ -127,8 +127,8 @@
 }
 
 .sl-goal-title {
-  margin: 8px 0 8px;
-  font-size: 20px;
+  margin: 8px 0 6px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
   text-wrap: pretty;
@@ -140,15 +140,52 @@
 }
 
 .sl-criteria-list {
-  margin: 0;
+  margin: 6px 0 0;
   padding-left: 18px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--slate-muted);
 }
 
 .sl-criteria-list li + li {
   margin-top: 3px;
+}
+
+.sl-bootstrap {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--slate-surface);
+  border: 1px solid var(--slate-border);
+}
+
+.sl-bootstrap-desc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--slate-muted);
+}
+
+.sl-bootstrap-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--slate-muted);
+}
+
+.sl-bootstrap-sessions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sl-bootstrap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .sl-override-chip {
@@ -512,7 +549,7 @@
 }
 
 .sl-root .sl-btn-primary {
-  border-color: var(--slate-ink);
+  border: 1px solid var(--slate-ink);
   background: var(--slate-ink);
   color: var(--slate-bg);
   padding: 5px 12px;

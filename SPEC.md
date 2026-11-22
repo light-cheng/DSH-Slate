@@ -171,6 +171,12 @@
 - 任务概况、优先处理和最近通过全部由真实状态派生。
 - 没有对应内容时收起该区块，不显示假数据或占位卡片。
 
+### FR-09 主动汇报引导与轻量冷启动
+
+- **日常会话主动汇报**：在宿主支持 `systemPrompt` 时条件挂载轻量动态片段，仅当工具对当前会话可见时生效；向模型同步当前工作区 `taskId` 列表、锁定状态与开放问题，指导模型仅在产生实质进度/测试结果/问题变化后主动调用 `project_progress_report`，纯只读或闲聊回合不触发汇报。
+- **目标紧凑约束**：`projectGoal` 引导一句话简短概括（建议 25 字以内），侧栏目标字号收敛至 `16px`，避免长段说明挤占任务轴。
+- **零 token 工作区线索与可控初始化**：空项目除保留真实空状态计数与隐藏优先/最近区块外，还提供只读工作区线索（根目录 Git 分支/标签/未提交数/最近提交，以及现有历史会话快捷跳转），支持通过受控单步提示一键触发「快速初始化」或「手动填写目标」。
+
 ## 7. 技术边界（基于 DSH `0.2.2-rc.5` 源码核实）
 
 ### 打包与入口
@@ -194,6 +200,12 @@
 - 主题读取 DSH `--dsw-*` token，不建立第二套全局主题，不导入其他功能插件的内部组件。
 - **栏宽支持边界**：`0.2.2-rc.5` 的 `LayoutController` 尚未暴露 `ctx.layout.requestRightbarWidth`。实现时优先探测公开 API；回退到 `ctx.layout.panels?.setRightbar?.(420)` 时，仅在首次打开且用户尚未手动调整宽度时应用一次，避免覆盖用户拖动结果。
 - **跨会话保持**：利用 `ctx.sidebarRight.openTabIn(sessionId, kind)`、`tabsIn(sessionId)` 与 `mounted` 在会话切换后恢复项目标签页。
+
+### 动态 Prompt 注入与工作区冷启动边界
+
+- **`systemPrompt.section` 条件挂载**：通过 `ctx.inject(['systemPrompt'], ...)` 条件挂载（`interpolate: false`，`order` 取 `TOOL_BASH + 20` 兜底 `520`），避免在无 `systemPrompt` 的最小 Headless Host 中阻塞工具注册；因 section `text(context)` 在 `0.2.2-rc.5` 为同步回调，存储层提供 `readSync(cwd)` 以避免阻塞事件循环。
+- **工具可见性守卫**：回调内通过 `tools.get('project_progress_report', agent)` 探测；当预设关闭汇报工具时返回空串，避免向无权调用的模型注入死规则。
+- **受控「快速初始化」网关边界**：通过 `ctx.get('typertGateway')` 调用宿主 `session/create` 与 `session/prompt`（仅携带存在时的 `connection.browserPeer`，且 `workspaceId` 与 `cwd` 按宿主契约互斥传递），将冷启动提示直接预填 Git 与根目录文档名，限制只读 1–2 个概览文件并立即汇报 `todo` 基线，防止无边界扫库消耗大量 token。
 
 ## 8. 安全与隐私
 

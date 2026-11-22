@@ -1,3 +1,4 @@
+import { collectWorkspaceContext, triggerQuickInit } from './bootstrap.js';
 import {
   buildProjectView,
   completeTask,
@@ -81,6 +82,20 @@ export function createRpcDispatcher(ctx, store) {
       }
     }
 
+    if (endpoint === 'getWorkspaceContext') {
+      if (!canonical) return rpcSuccess(null);
+      try {
+        const wsContext = await collectWorkspaceContext(
+          ctx,
+          canonical,
+          typeof payload.sessionId === 'string' ? payload.sessionId : ''
+        );
+        return rpcSuccess(wsContext);
+      } catch (error) {
+        return rpcFailure('slate/context-failed', error.message);
+      }
+    }
+
     if (!canonical) {
       return rpcFailure('slate/invalid-workspace', '未识别当前工作区路径，无法保存修改');
     }
@@ -150,11 +165,19 @@ export function createRpcDispatcher(ctx, store) {
           return rpcSuccess(buildProjectView(project));
         }
 
+        case 'quickInit': {
+          const started = await triggerQuickInit(ctx, store, {
+            workspacePath: canonical,
+            sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : '',
+          });
+          return rpcSuccess(started);
+        }
+
         default:
           return rpcFailure('slate/unknown-endpoint', `Unknown RPC endpoint: ${endpoint}`);
       }
     } catch (error) {
-      return rpcFailure('slate/mutation-failed', error.message);
+      return rpcFailure(error?.code || 'slate/mutation-failed', error?.message || String(error));
     }
   };
 }
