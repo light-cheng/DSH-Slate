@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**`v0.1.0` 已正式发布到 GitHub 与 npm（OIDC Provenance 已验证）——GitHub 仓库 `light-cheng/DSH-Slate`、GitHub Release `v0.1.0` 与 npm `@lightcheng/dsh-slate@0.1.0` 均已上线，三平台 CI 全绿通过；仅剩仓库公开满 24 小时后向 `awesome-dsh-plugin` 提交插件市场 PR（`data/plugins/light-cheng__DSH-Slate--plugin.yml`）。**
+当前阶段：**`v0.1.0` 已正式发布到 GitHub、npm 与提交插件市场 PR——GitHub 仓库 `light-cheng/DSH-Slate`、GitHub Release `v0.1.0`、npm `@lightcheng/dsh-slate@0.1.0`（OIDC Provenance）均已上线，桌面端已切换为 `@lightcheng/dsh-slate@0.1.0`，且 `awesome-dsh-plugin` PR #17699 已提交等待 24 小时新仓门禁自动放行。**
 
 ## 从这里开始
 
@@ -51,9 +51,10 @@ npm pack --dry-run
 - **GitHub 与 npm 发布链路已闭环**：
   - GitHub 公开仓库：<https://github.com/light-cheng/DSH-Slate>（三平台 CI 全绿：<https://github.com/light-cheng/DSH-Slate/actions/runs/44985305716>）。
   - GitHub Release `v0.1.0`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.0>；`.github/workflows/release.yml` 已通过 npm OIDC Trusted Publishing 成功发布 `@lightcheng/dsh-slate@0.1.0` 至 `latest`（<https://github.com/light-cheng/DSH-Slate/actions/runs/44985774016>，Sigstore Provenance logIndex `4035687924`），npm 包页：<https://www.npmjs.com/package/@lightcheng/dsh-slate>。
-- **正式环境安装状态**：`desktop` Profile 目前仍通过本地 `link` 挂载旧包名 `dsh-slate`；用户可先移除旧本地链接再通过 `dsh plugin --profile desktop add @lightcheng/dsh-slate` 切换到 npm 正式包（现有 `~/.dsh/storages/dsh-slate/` 数据完全兼容）。
+  - 插件市场 PR：<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/17699>（已提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml`，`category: workflow`，等待满 24 小时后由 `held-rescan` 自动重检通过）。
+- **正式环境安装状态**：`desktop` Profile 已移除旧本地链接 `dsh-slate`，改为安装正式 npm 包 `@lightcheng/dsh-slate@0.1.0`（并在 `desktop/pnpm-workspace.yaml` 同步放行已安装的 `dsh-mobile-plugin@0.5.94`）；现有 `~/.dsh/storages/dsh-slate/` 项目进度数据完整保留。
 
 ## 下一步（如后续迭代）
 
 - **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
-- **插件市场提交（`2026-11-23 12:25` 之后）**：仓库公开满 24 小时（满足 `awesome-dsh-plugin` `MIN_AGE_DAYS = 1`）后，按 [MARKETPLACE.md](MARKETPLACE.md) 提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml` PR。
+- **插件市场跟进**：PR #17699 满 24 小时（约 `2026-11-23 12:25`）后确认 `Submission gate` 转绿等待维护者合入。
