@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-22  
-当前阶段：**发布推进中——因 `dsh-slate` 在 npm 已被占位，已按用户确认将 npm 包名切换为 `@lightcheng/dsh-slate`（保留内部存储路径与 UI ID `dsh-slate` 向后兼容），通过隔离 DSH CLI 安装验证、创建 GitHub 公开仓库 `light-cheng/DSH-Slate` 并推送 `main`，等待用户完成 npm OIDC Trusted Publishing 绑定后发布 `v0.1.0` Release，并满 24 小时后提交 `awesome-dsh-plugin`。**
+当前阶段：**`v0.1.0` 已正式发布到 GitHub 与 npm（OIDC Provenance 已验证）——GitHub 仓库 `light-cheng/DSH-Slate`、GitHub Release `v0.1.0` 与 npm `@lightcheng/dsh-slate@0.1.0` 均已上线，三平台 CI 全绿通过；仅剩仓库公开满 24 小时后向 `awesome-dsh-plugin` 提交插件市场 PR（`data/plugins/light-cheng__DSH-Slate--plugin.yml`）。**
 
 ## 从这里开始
 
@@ -48,8 +48,12 @@ npm pack --dry-run
   - 日常开发会话未提插件/汇报工具即主动调用 `project_progress_report` 并通过 `exitCode === 0` 证据核对；独立重跑 `node --test` `1/1` 通过（[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt)）。
   - 空项目过滤空白草稿后显示 `已有 1 个历史会话` 与全宽单色纵向可点击列表（见 [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)），点击历史会话行跳转正常；点击「快速初始化」写入 `16px` 目标；浅/深色 `16px` Tab 图标 DOM 切换正常，浏览器错误 `0`。
 - `node plugin/scripts/e2e-dsh.mjs`（全量 `AC-01`–`AC-08` 回归通过，[v1-e2e-report.json](test-results/v1-e2e-report.json)）：覆盖空态、三会话（含真实失败 `退出码：1` 核对与输出引用）、手动锁定防覆盖与恢复、完成/验收分离、跨会话保持、重启恢复、拖宽保持（`420px → 514px`）、未鉴权 RPC 返回 `401` 与隔离清理（原 `~/.dsh` SHA-256 一致）。
-- **正式环境安装状态**：`desktop` Profile 目前仍通过本地 `link` 挂载旧包名 `dsh-slate`（待 npm 发布 `@lightcheng/dsh-slate@0.1.0` 后可按需切换安装，现有 `~/.dsh/storages/dsh-slate/` 数据完全兼容）。
+- **GitHub 与 npm 发布链路已闭环**：
+  - GitHub 公开仓库：<https://github.com/light-cheng/DSH-Slate>（三平台 CI 全绿：<https://github.com/light-cheng/DSH-Slate/actions/runs/44985305716>）。
+  - GitHub Release `v0.1.0`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.0>；`.github/workflows/release.yml` 已通过 npm OIDC Trusted Publishing 成功发布 `@lightcheng/dsh-slate@0.1.0` 至 `latest`（<https://github.com/light-cheng/DSH-Slate/actions/runs/44985774016>，Sigstore Provenance logIndex `4035687924`），npm 包页：<https://www.npmjs.com/package/@lightcheng/dsh-slate>。
+- **正式环境安装状态**：`desktop` Profile 目前仍通过本地 `link` 挂载旧包名 `dsh-slate`；用户可先移除旧本地链接再通过 `dsh plugin --profile desktop add @lightcheng/dsh-slate` 切换到 npm 正式包（现有 `~/.dsh/storages/dsh-slate/` 数据完全兼容）。
 
 ## 下一步（如后续迭代）
 
-- **用户完成 npm 登录与 OIDC Trusted Publishing 绑定**（`light-cheng/DSH-Slate` · `release.yml`）→ **发布 GitHub Release `v0.1.0`** 验证 `release.yml` 自动发布 `@lightcheng/dsh-slate@0.1.0` → **公开仓库满 24 小时后**（`MIN_AGE_DAYS = 1`）向 `awesome-dsh-plugin` 提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml`。
+- **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
+- **插件市场提交（`2026-11-23 12:25` 之后）**：仓库公开满 24 小时（满足 `awesome-dsh-plugin` `MIN_AGE_DAYS = 1`）后，按 [MARKETPLACE.md](MARKETPLACE.md) 提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml` PR。
