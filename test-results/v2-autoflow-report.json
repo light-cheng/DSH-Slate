@@ -3,21 +3,21 @@
   "hostVersion": "0.2.2-rc.5",
   "model": "magpie / auto/deepseek-v4.1-flash",
   "scenarioA": {
-    "sessionId": "session-1a5c0244-43fc-4305-b583-dd7f941b5cff",
+    "sessionId": "session-eea6d1f3-cfed-4339-bfb9-935565517e28",
     "proactiveReportCalls": 1,
     "revision": 1,
-    "goal": "修复 add 函数并保证测试全部通过",
+    "goal": "修复 calc 模块加法并跑通测试",
     "taskCount": 1,
     "evidenceVerifiedChecks": 1
   },
   "scenarioB": {
-    "priorSessionId": "session-6686507e-f348-4a5d-8b76-d8a102b508df",
-    "uiSessionId": "session-aad0cb5c-8a97-4b07-898d-c2fd41386c54",
+    "priorSessionId": "session-badb33c4-0181-4f81-b7aa-fb5100335819",
+    "uiSessionId": "session-6e96d88b-f43e-4065-926c-7a8f954a1146",
     "afterInitMetrics": {
-      "goalText": "交付轻量跨平台托盘工具，支持单二进制分发",
+      "goalText": "构建轻量桌面托盘工具，支持窗口定位与快捷键",
       "goalFontSize": 16,
-      "taskCount": 2,
-      "criteriaCount": 6,
+      "taskCount": 3,
+      "criteriaCount": 9,
       "bootstrapStillVisible": false
     },
     "lightIconState": {
@@ -34,5 +34,5 @@
   },
   "browserErrors": [],
   "isolatedProfilesUntouched": true,
-  "capturedAt": "2026-11-22T02:40:37.463Z"
+  "capturedAt": "2026-11-22T03:07:25.461Z"
 }

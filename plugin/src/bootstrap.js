@@ -21,7 +21,7 @@ const OVERVIEW_CANDIDATES = [
 ];
 const MAX_CANDIDATE_SESSIONS = 12;
 const MAX_RECENT_SESSIONS = 5;
-const SESSION_LIST_TIMEOUT_MS = 2500;
+const SESSION_LIST_TIMEOUT_MS = 8000;
 const QUICK_INIT_TIMEOUT_MS = 15000;
 
 function resolveBrowserPeer(ctx) {
@@ -118,10 +118,15 @@ export function detectOverviewFiles(workspacePath) {
  */
 export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSessionId = '') {
   const targetPath = canonicalizeWorkspacePath(rawWorkspacePath);
-  const workspaces = ctx.get?.('workspaceRegistry')?.list?.();
+  const registry = ctx.get?.('workspaceRegistry');
+  const workspaces = registry?.list?.();
   const matched = Array.isArray(workspaces)
     ? workspaces.find((ws) => canonicalizeWorkspacePath(ws?.path) === targetPath)
     : null;
+  const archivedRaw = registry?.archivedSessionIds;
+  const archivedSet = new Set(
+    archivedRaw && typeof archivedRaw[Symbol.iterator] === 'function' ? [...archivedRaw] : []
+  );
 
   const gateway = ctx.get?.('typertGateway');
   const peer = resolveBrowserPeer(ctx);
@@ -149,18 +154,41 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
     }
   }
 
+  const hasLiveList = listMap.size > 0;
   const workspaceId = typeof matched?.id === 'string' ? matched.id : '';
   const rawIds = Array.isArray(matched?.sessionIds) ? matched.sessionIds : [];
   const seen = new Set();
   const filteredIds = [];
   for (const id of rawIds) {
     if (typeof id !== 'string' || !id || id === excludeSessionId || seen.has(id)) continue;
-    if (listMap.get(id)?.blank === true) continue;
+    if (archivedSet.has(id)) continue;
+    const summary = listMap.get(id);
+    if (hasLiveList && !summary) continue;
+    if (summary?.blank === true) continue;
+    if (summary?.origin === 'subagent') continue;
     seen.add(id);
     filteredIds.push(id);
   }
 
-  const candidateIds = filteredIds.slice(-MAX_CANDIDATE_SESSIONS);
+  let candidateIds;
+  if (hasLiveList) {
+    candidateIds = [...filteredIds]
+      .sort((a, b) => {
+        const sa = listMap.get(a);
+        const sb = listMap.get(b);
+        const ta = toIsoTimestamp(sa?.updatedAt ?? sa?.lastActiveAt ?? sa?.createdAt);
+        const tb = toIsoTimestamp(sb?.updatedAt ?? sb?.lastActiveAt ?? sb?.createdAt);
+        return String(tb || '').localeCompare(String(ta || ''));
+      })
+      .slice(0, MAX_CANDIDATE_SESSIONS);
+  } else if (filteredIds.length <= MAX_CANDIDATE_SESSIONS) {
+    candidateIds = [...filteredIds];
+  } else {
+    const headCount = Math.ceil(MAX_CANDIDATE_SESSIONS / 2);
+    const tailCount = Math.floor(MAX_CANDIDATE_SESSIONS / 2);
+    candidateIds = [...new Set([...filteredIds.slice(0, headCount), ...filteredIds.slice(-tailCount)])];
+  }
+
   const sessions = ctx.get?.('sessions');
   const persistence = ctx.get?.('sessionPersistence');
 
@@ -176,12 +204,13 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
       }
       const summary = listMap.get(id);
       const title =
+        String(summary?.displayTitle || '').trim() ||
         String(summary?.projections?.values?.title || '').trim() ||
         String(summary?.title || '').trim() ||
         String(header?.title || header?.name || '').trim() ||
         `会话 ${sessionLabel(id)}`;
       const updatedAt =
-        toIsoTimestamp(summary?.lastActiveAt ?? summary?.updatedAt) ||
+        toIsoTimestamp(summary?.updatedAt ?? summary?.lastActiveAt ?? summary?.createdAt) ||
         toIsoTimestamp(header?.updatedAt ?? header?.createdAt);
       return {
         id,

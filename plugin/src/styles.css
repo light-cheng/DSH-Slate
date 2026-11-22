@@ -179,14 +179,31 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sl-session-chip {
-  max-width: 180px;
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 196px;
+  padding: 2px 7px;
+  border: 1px solid var(--slate-border);
+  border-radius: 4px;
+  background: var(--slate-bg);
+  color: var(--slate-ink);
+  font-size: 12px;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.sl-session-chip:hover {
+  background: var(--slate-surface-hover);
+  border-color: var(--slate-muted);
+  color: var(--slate-ink);
+  text-decoration: none;
 }
 
 .sl-bootstrap-actions {

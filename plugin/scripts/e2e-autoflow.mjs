@@ -478,9 +478,17 @@ async function main() {
 
     await page.screenshot({ path: join(REPO_ROOT, 'previews', 'v2-01-empty-hints.png') });
 
+    // Click the historical session chip and verify it actually navigates to priorSession while keeping Slate open
+    console.log('[e2e-autoflow] clicking historical session chip to verify navigation...');
+    const chipBtn = coldSlate.locator('.sl-session-chip').first();
+    await chipBtn.click();
+    const priorSlate = page.locator(`[data-sidebar-right-session="${priorSession.sessionId}"] .sl-root`).first();
+    await priorSlate.waitFor({ state: 'visible', timeout: 10000 });
+    await priorSlate.locator('.sl-bootstrap').waitFor({ state: 'visible', timeout: 10000 });
+
     // Click one-click 快速初始化!
     console.log('[e2e-autoflow] clicking 快速初始化 in Playwright...');
-    const quickInitBtn = coldSlate.getByRole('button', { name: '快速初始化' });
+    const quickInitBtn = priorSlate.getByRole('button', { name: '快速初始化' });
     await quickInitBtn.waitFor({ state: 'visible', timeout: 5000 });
     await quickInitBtn.click();
 

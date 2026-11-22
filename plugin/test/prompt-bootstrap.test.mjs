@@ -263,6 +263,57 @@ test('collectGitSnapshot, collectWorkspaceContext & buildQuickInitPrompt on git 
     assert.match(prompt, /禁止全库扫描源码/);
     assert.match(prompt, /建议 25 字以内/);
     assert.match(prompt, /务必全部标为 `todo`/);
+
+    // Verify archived (Set & Array), missing-from-live-list ghost IDs, subagents, and >12 newest-first sessionIds
+    const manyActiveIds = Array.from({ length: 14 }, (_, i) => `ses-active-${i + 1}`);
+    const listItemsMany = manyActiveIds.map((id, idx) => ({
+      sessionId: id,
+      blank: false,
+      updatedAt: 1795300000000 + (14 - idx) * 1000,
+      displayTitle: `Active Session ${idx + 1}`,
+    }));
+    const listWithSpecials = [
+      ...listItemsMany,
+      { sessionId: 'ses-archived-1', blank: false, updatedAt: 1795399999000, displayTitle: '已归档会话' },
+      { sessionId: 'ses-sub-1', blank: false, origin: 'subagent', updatedAt: 1795399998000, displayTitle: '子代理会话' },
+    ];
+    for (const archivedContainer of [new Set(['ses-archived-1']), ['ses-archived-1']]) {
+      const ctxFiltered = createServiceHostMock({
+        workspaceRegistry: {
+          archivedSessionIds: archivedContainer,
+          list: () => [
+            {
+              id: 'ws-filtered',
+              path: gitRepo,
+              // Newest-first order (> 12 entries), plus archived, ghost, subagent, blank, and current
+              sessionIds: [
+                'ses-cur',
+                'ses-archived-1',
+                'ses-ghost-missing',
+                'ses-sub-1',
+                ...manyActiveIds,
+              ],
+            },
+          ],
+        },
+        typertGateway: {
+          async invoke(req) {
+            if (req.namespace === 'session' && req.method === 'list') {
+              return { items: listWithSpecials };
+            }
+            return {};
+          },
+        },
+      });
+      const resFiltered = await collectWorkspaceContext(ctxFiltered, gitRepo, 'ses-cur');
+      assert.equal(resFiltered.totalSessions, 14);
+      assert.equal(resFiltered.recentSessions.length, 5);
+      assert.equal(resFiltered.recentSessions[0].id, 'ses-active-1');
+      assert.equal(resFiltered.recentSessions[0].title, 'Active Session 1');
+      assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-archived-1'), false);
+      assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-ghost-missing'), false);
+      assert.equal(resFiltered.recentSessions.some((s) => s.id === 'ses-sub-1'), false);
+    }
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

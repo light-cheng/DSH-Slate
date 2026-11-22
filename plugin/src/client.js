@@ -100,6 +100,71 @@ function App(props) {
     : '';
   const workspacePath = boundWorkspacePath || sessionCwd || '';
 
+  const sessionsById = useSessions ? useSessions((s) => s?.byId) : null;
+  const workspaceItems = useWorkspaces ? useWorkspaces((w) => w?.items) : null;
+  const archivedSessionIds = useWorkspaces ? useWorkspaces((w) => w?.archivedSessionIds) : null;
+
+  const liveSessionSnapshot = useMemo(() => {
+    if (
+      !sessionsById ||
+      typeof sessionsById !== 'object' ||
+      Object.keys(sessionsById).length === 0 ||
+      !Array.isArray(workspaceItems)
+    ) {
+      return null;
+    }
+
+    const normalizePath = (p) => {
+      if (typeof p !== 'string') return '';
+      const trimmed = p.replace(/[/\\]+$/, '');
+      return trimmed || (p ? '/' : '');
+    };
+    const targetPath = normalizePath(workspacePath);
+    const matched =
+      workspaceItems.find((item) => Array.isArray(item?.sessionIds) && item.sessionIds.includes(sessionId)) ||
+      (targetPath ? workspaceItems.find((item) => normalizePath(item?.path) === targetPath) : null);
+
+    if (!matched || !Array.isArray(matched.sessionIds)) {
+      return null;
+    }
+
+    const archivedSet = new Set(
+      archivedSessionIds && typeof archivedSessionIds[Symbol.iterator] === 'function'
+        ? [...archivedSessionIds]
+        : []
+    );
+    const seen = new Set();
+    const items = [];
+
+    for (const id of matched.sessionIds) {
+      if (typeof id !== 'string' || !id || id === sessionId || seen.has(id)) continue;
+      if (archivedSet.has(id)) continue;
+      const summary = sessionsById[id];
+      if (!summary || summary.blank === true || summary.origin === 'subagent') continue;
+      seen.add(id);
+      const label = `#${id.replace(/^session-/, '').slice(0, 8)}`;
+      const title =
+        String(
+          summary.displayTitle ||
+            summary.projections?.values?.title ||
+            summary.title ||
+            ''
+        ).trim() || `会话 ${label}`;
+      const rawTs = summary.updatedAt ?? summary.lastActiveAt ?? summary.createdAt;
+      const ts =
+        typeof rawTs === 'number' && Number.isFinite(rawTs)
+          ? rawTs
+          : (typeof rawTs === 'string' && rawTs ? Date.parse(rawTs) || 0 : 0);
+      items.push({ id, label, title, ts });
+    }
+
+    items.sort((a, b) => b.ts - a.ts);
+    return {
+      totalSessions: items.length,
+      recentSessions: items.slice(0, 5),
+    };
+  }, [sessionsById, workspaceItems, archivedSessionIds, sessionId, workspacePath]);
+
   const [project, setProject] = useState(EMPTY_VIEW);
   const [workspaceContext, setWorkspaceContext] = useState(null);
   const [initStatus, setInitStatus] = useState('');
@@ -523,54 +588,62 @@ function App(props) {
                 project.acceptanceCriteria.map((criterion, idx) => h('li', { key: `${idx}-${criterion}` }, criterion))
               )
             : (!project.goal && tasks.length === 0 && checks.length === 0 && issues.length === 0)
-              ? h('div', { className: 'sl-bootstrap' },
-                  h('p', { className: 'sl-bootstrap-desc' }, '尚未记录项目进度。日常开发与测试会话会自动汇报，也可立即初始化当前工作区：'),
-                  (workspaceContext?.git || (workspaceContext?.recentSessions || []).length > 0)
-                    ? h('div', { className: 'sl-bootstrap-meta' },
-                        workspaceContext?.git
-                          ? h('div', null, [
-                              `分支 ${workspaceContext.git.branch}`,
-                              workspaceContext.git.latestTag ? `标签 ${workspaceContext.git.latestTag}` : '',
-                              workspaceContext.git.dirtyCount > 0 ? `${workspaceContext.git.dirtyCount} 处未提交改动` : '',
-                            ].filter(Boolean).join(' · '))
-                          : null,
-                        workspaceContext?.git?.recentCommits?.[0]
-                          ? h('div', null, `最近提交：${workspaceContext.git.recentCommits[0].sha} ${workspaceContext.git.recentCommits[0].subject}`)
-                          : null,
-                        (workspaceContext?.recentSessions || []).length > 0
-                          ? h('div', { className: 'sl-bootstrap-sessions' },
-                              h('span', null, `已有 ${workspaceContext.totalSessions} 个历史会话：`),
-                              workspaceContext.recentSessions.slice(0, 3).map((item) =>
-                                h('button', {
-                                  key: item.id,
-                                  type: 'button',
-                                  className: 'sl-text-btn sl-session-chip',
-                                  title: `${item.title} (${item.label})`,
-                                  onClick: () => openSession(item.id),
-                                }, item.title)
+              ? (() => {
+                  const historicalTotal = liveSessionSnapshot
+                    ? liveSessionSnapshot.totalSessions
+                    : (workspaceContext?.totalSessions || 0);
+                  const historicalSessions = liveSessionSnapshot
+                    ? liveSessionSnapshot.recentSessions
+                    : (workspaceContext?.recentSessions || []);
+                  return h('div', { className: 'sl-bootstrap' },
+                    h('p', { className: 'sl-bootstrap-desc' }, '尚未记录项目进度。日常开发与测试会话会自动汇报，也可立即初始化当前工作区：'),
+                    (workspaceContext?.git || historicalSessions.length > 0)
+                      ? h('div', { className: 'sl-bootstrap-meta' },
+                          workspaceContext?.git
+                            ? h('div', null, [
+                                `分支 ${workspaceContext.git.branch}`,
+                                workspaceContext.git.latestTag ? `标签 ${workspaceContext.git.latestTag}` : '',
+                                workspaceContext.git.dirtyCount > 0 ? `${workspaceContext.git.dirtyCount} 处未提交改动` : '',
+                              ].filter(Boolean).join(' · '))
+                            : null,
+                          workspaceContext?.git?.recentCommits?.[0]
+                            ? h('div', null, `最近提交：${workspaceContext.git.recentCommits[0].sha} ${workspaceContext.git.recentCommits[0].subject}`)
+                            : null,
+                          historicalSessions.length > 0
+                            ? h('div', { className: 'sl-bootstrap-sessions' },
+                                h('span', null, `已有 ${historicalTotal} 个历史会话：`),
+                                historicalSessions.slice(0, 3).map((item) =>
+                                  h('button', {
+                                    key: item.id,
+                                    type: 'button',
+                                    className: 'sl-session-chip',
+                                    title: `${item.title} (${item.label})`,
+                                    onClick: () => openSession(item.id),
+                                  }, item.title)
+                                )
                               )
-                            )
-                          : null
-                      )
-                    : null,
-                  h('div', { className: 'sl-bootstrap-actions' },
-                    workspaceContext?.canQuickInit
-                      ? h('button', {
-                          type: 'button',
-                          className: 'sl-btn-primary',
-                          disabled: busy,
-                          onClick: runQuickInit,
-                        }, '快速初始化')
+                            : null
+                        )
                       : null,
-                    h('button', {
-                      type: 'button',
-                      className: 'sl-btn',
-                      disabled: busy,
-                      onClick: openGoalEditor,
-                    }, '手动填写目标')
-                  ),
-                  initStatus ? h('div', { className: 'sl-editor-note' }, initStatus) : null
-                )
+                    h('div', { className: 'sl-bootstrap-actions' },
+                      workspaceContext?.canQuickInit
+                        ? h('button', {
+                            type: 'button',
+                            className: 'sl-btn-primary',
+                            disabled: busy,
+                            onClick: runQuickInit,
+                          }, '快速初始化')
+                        : null,
+                      h('button', {
+                        type: 'button',
+                        className: 'sl-btn',
+                        disabled: busy,
+                        onClick: openGoalEditor,
+                      }, '手动填写目标')
+                    ),
+                    initStatus ? h('div', { className: 'sl-editor-note' }, initStatus) : null
+                  );
+                })()
               : h('div', { className: 'sl-editor-note' }, '暂无验收标准，可点击「编辑」补充')
         ),
 
