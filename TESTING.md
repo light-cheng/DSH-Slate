@@ -1,6 +1,6 @@
 # 测试基线与隔离验收报告
 
-> **证据区分说明**：本文件同时记录两类材料——**正式插件（`plugin/`）的新执行验收结果（`v1-*` 与 `v2-*`）** 与 **早期原型阶段（`prototype-plugin/`）的历史基线**，两者严格区分，不以原型结果冒充正式实现验收。
+> **证据区分说明**：本文件同时记录两类材料——**正式插件（`plugin/`）的新执行验收结果（`v1-*`、`v2-*` 与 `v3-*`）** 与 **早期原型阶段（`prototype-plugin/`）的历史基线**，两者严格区分，不以原型结果冒充正式实现验收。
 
 ## 隔离测试环境规范
 
@@ -53,6 +53,17 @@
 |---|---|---|
 | 场景 A · 日常会话零提示词主动汇报 | **PASS**（普通提示让真实会话修复 `src/calc.js` 并跑 `node --test`，未提及 Slate 或汇报工具；模型通过 `systemPrompt.section` 主动调用 `project_progress_report` `1` 次，写入 `revision: 1`、目标「修复 add 函数并保证测试全部通过」及 `1` 项真实退出码为 `0` 的证据通过记录；独立重跑 `node --test` `1/1` 通过） | [v2-autoflow-report.json](test-results/v2-autoflow-report.json)、[v2-autoflow-independent.txt](test-results/v2-autoflow-independent.txt) |
 | 场景 B · 空项目真实历史标题 + 零 token 线索 + 快速初始化 + 双主题图标 | **PASS**（两段纯只读会话保持 `revision: 0`；空项目侧栏过滤空白草稿后准确展示 `已有 1 个历史会话：PRIOR_OK verification request` 与 Git `main` / `v0.1.0` / `6857dd7`；点击「快速初始化」仅用 2 步完成并写入 `16px` 紧凑目标「交付轻量跨平台托盘工具，支持单二进制分发」；切暗色后自动切换 `.sl-tab-icon-dark`（`rgb(21, 21, 23)`）；`0` 浏览器错误，临时环境已清空且原 `~/.dsh` 一致） | [v2-01-empty-hints.png](previews/v2-01-empty-hints.png)、[v2-02-after-quick-init-light.png](previews/v2-02-after-quick-init-light.png)、[v2-03-after-quick-init-dark.png](previews/v2-03-after-quick-init-dark.png) |
+
+### 4. `v0.1.1` / `v0.1.2` 及 `main` 增量回归验证（最新新执行）
+
+- **全量单元与并发测试（`cd plugin && npm run verify`，`18/18` 通过）**：
+  - 在原有 `13` 项测试基础上，陆续补齐并全部通过：同会话 TDD 红转绿复用及跨会话失败覆盖、`deleteTask` 删除任务/绑定检查及问题解绑、`store.mutate` 异常队列无 `unhandledRejection`、Windows 工作区按 `sessionId`/路径匹配、`ops_bash` / `script_path` / `dsh-ops` 失败与后台升级标记识别及 Windows `icacls` 引号反斜杠归一化匹配、以及 `sanitizeIssueTitle` 去重前缀（含 `P2P` 保护）。
+  - 三平台 GitHub Actions（`macos-latest` / `ubuntu-latest` / `windows-latest`）随发布与提交同步通过 `npm run verify` 与 `npm pack --dry-run`。
+- **隔离 DSH Web + Playwright 失效会话跳转与任务删除实测**：
+  - 在临时 `DSH_HOME`、`127.0.0.1` 随机端口隔离环境中，活跃会话 `#6ff57aa9` 与引用已删会话 `#35cbd432` 的任务卡同屏渲染并标注 `· 会话已删除`；
+  - 点击已删会话任务标题停留在当前活跃会话并展示 `.sl-notice.is-warn` 就地提示（未跳回「探索未至之境」主页，`0` 浏览器错误）；点击「删除任务」→「确认删除」后任务数从 `2` 降至 `1`、绑定待检清除、关联问题独立保留，刷新页面保持一致（见 [v3-missing-session-delete.png](previews/v3-missing-session-delete.png)），测试后 `.tmp/` 完整清理且 `~/.dsh` 校验未变。
+- **Windows DSH 实机验证（`@lightcheng/dsh-slate@0.1.2`）**：
+  - 用户在实际 Windows 桌面端运行 `ops_bash` 执行 `npm run dist`（退出码 `0`）与 `icacls "dist/win-unpacked/Black Hole Screensaver.exe"`（`Mandatory Label\Medium Mandatory Level`），两条验收记录由自动证据核对判定为「已通过」，孤立初始化任务已通过「删除任务」移除。
 
 ---
 

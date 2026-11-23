@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-23  
-当前阶段：**`v0.1.2` 已正式发布上线——npm `@lightcheng/dsh-slate@0.1.2`（`latest`，OIDC Provenance）与 GitHub Release `v0.1.2` 均已生效，修复 `dsh-ops`（`ops_bash`）自动证据核验与 Windows 命令归一化匹配；`awesome-dsh-plugin` PR #17699 等待满 24 小时门禁放行。**
+当前阶段：**线上最新正式版为 `v0.1.2`（npm `@lightcheng/dsh-slate@0.1.2` `latest` + GitHub Release `v0.1.2`，已在 Windows DSH 实机完成 `ops_bash`、`icacls` 与删卡闭环验证）；`main` 在 `v0.1.2` 之后另有 1 个已验证未发版提交（`85bd948`：去重问题标题 `[P0]`–`[P2]` 冗余前缀，`18/18` 单测通过），按用户要求暂攒入后续版本一起发布；`awesome-dsh-plugin` PR #17699 等待满 24 小时门禁自动放行。**
 
 ## 从这里开始
 
@@ -24,7 +24,7 @@ npm pack --dry-run
 - [AGENTS.md](AGENTS.md)：编码 Agent 约束与隔离测试约定。
 - [direction-approved.md](direction-approved.md)：已批准的原生 DSH 石墨单色视觉基准。
 - [TESTING.md](TESTING.md)：正式验收矩阵、新执行证据与历史原型基线记录。
-- [previews/](previews/)：包含 `v1-01`–`v1-06` 与本轮 `v2-01`–`v2-03` 正式实测截图，及原型阶段历史基线截图。
+- [previews/](previews/)：包含 `v1-01`–`v1-06`、`v2-01`–`v2-03` 与 `v3-missing-session-delete.png` 正式实测截图，及原型阶段历史基线截图。
 - [test-results/](test-results/)：包含 `v1-*` 与本轮 `v2-autoflow-report.json`、`v2-autoflow-independent.txt` 正式输出，及原型阶段历史基线记录。
 
 ## 已核实的 DSH `0.2.2-rc.5` 宿主接口与实测结论
@@ -38,8 +38,14 @@ npm pack --dry-run
 
 ## 本轮已验证项
 
+- **`main` 尚未发版的增量改动（commit `85bd948`，暂攒至下一版 `v0.1.3` 一起发布，未改版本号与 Tag）**：
+  - `plugin/src/domain.js`：新增 `sanitizeIssueTitle`（剥离标题开头重复携带的 `[P0]`–`[P2]`、`【P0–P2】` 或 `P0:`/`P1：`/`P2-` 等前缀，不误伤 `P2P ...` 正常标题），在 `stableIssueId` 哈希、`applySessionReport` 写入及 `buildProjectView` / `selectPriorityFocus` 投影展示阶段统一清洗（历史持久化中的重复前缀条目也会即时显示干净）。
+  - `plugin/src/prompt.js`：待修问题上下文注入格式由 `[issueId: ...] [P1] 标题` 调整为 `[issueId: ...] 标题（P1）`，与任务行格式对齐，减少模型复写标题时连带抄入级别标签。
+  - `npm run verify`（commit `85bd948` 最新运行）：构建 `lib/client.js`（`71194` bytes），`18/18` 单元与多进程/拒绝恢复测试全部通过（含 `domain.test.mjs` 新增前缀清洗与 `P2P` 保护用例、`prompt-bootstrap.test.mjs` 新格式断言）。
+
 - **`v0.1.2` `ops_bash` 与 Windows 证据核对修复（已发布至 npm `latest`）**：
   - GitHub Release `v0.1.2`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.2>；`release` 工作流（<https://github.com/light-cheng/DSH-Slate/actions/runs/45104353063>，Sigstore Provenance logIndex `4049991176`）与三平台 `ci`（<https://github.com/light-cheng/DSH-Slate/actions/runs/45104352187>）均已绿，`npm view` 已确认 `@lightcheng/dsh-slate@0.1.2` 在 `latest` 生效。
+  - Windows DSH 实机验证通过：用户升级至 `@lightcheng/dsh-slate@0.1.2` 后在原会话重跑 `ops_bash` 构建（`npm run dist`）与带引号路径检查（`icacls "dist/win-unpacked/Black Hole Screensaver.exe"`），两项验收记录均自动匹配为「已通过」，孤立初始化任务已用界面「删除任务」移除，任务切换为「已验收」并更新「最近通过」。
   - `plugin/src/evidence.js`：将 `ops_bash` / `ops_pwsh` / `ops_shell` / `powershell` / `cmd` 与 `script_path` 纳入 `extractShellExecutions`；严格识别 `[cancelled]`、`[signal: ...]`、`[error: ...]`、结构化 `[CODE; effects: ...; retry: ...]`、`[POLICY_DENIED: ...]`、沙箱拒绝及 `dsh-ops` 后台升级标记（`[still running after ...ms; moved to background job ...]`）；在 `findMatchingExecution` 新增引号与斜杠（`\` / `/`）归一化兜底匹配，修复装有 `dsh-ops` 时构建与 Windows `icacls` 检查误降级为「未检查」的问题。
   - `plugin/test/domain.test.mjs`：新增 `ops_bash` 成功/失败/取消/策略拒绝/后台升级/`script_path` 与 Windows `icacls` 跨引号反斜杠匹配回归测试。
   - `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`17/17` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.2.tgz`（`34` 个文件，`2.3 MB`）。
@@ -72,10 +78,10 @@ npm pack --dry-run
   - GitHub 公开仓库：<https://github.com/light-cheng/DSH-Slate>（三平台 CI 全绿：<https://github.com/light-cheng/DSH-Slate/actions/runs/44985305716>）。
   - GitHub Release `v0.1.0`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.0>；`.github/workflows/release.yml` 已通过 npm OIDC Trusted Publishing 成功发布 `@lightcheng/dsh-slate@0.1.0` 至 `latest`（<https://github.com/light-cheng/DSH-Slate/actions/runs/44985774016>，Sigstore Provenance logIndex `4035687924`），npm 包页：<https://www.npmjs.com/package/@lightcheng/dsh-slate>。
   - 插件市场 PR：<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/17699>（已提交 `data/plugins/light-cheng__DSH-Slate--plugin.yml`，`category: workflow`，等待满 24 小时后由 `held-rescan` 自动重检通过）。
-- **正式环境安装状态**：`desktop` Profile 已移除旧本地链接 `dsh-slate`，改为安装正式 npm 包 `@lightcheng/dsh-slate@0.1.0`（并在 `desktop/pnpm-workspace.yaml` 同步放行已安装的 `dsh-mobile-plugin@0.5.94`）；现有 `~/.dsh/storages/dsh-slate/` 项目进度数据完整保留。
+- **正式环境安装状态**：Windows 端已实机升级并验证至 `@lightcheng/dsh-slate@0.1.2`；本机 macOS `desktop` Profile 上次安装记录为 `@lightcheng/dsh-slate@0.1.0`（已在 `desktop/pnpm-workspace.yaml` 放行 `dsh-mobile-plugin@0.5.94`，可执行升级更新到 `0.1.2`），现有 `~/.dsh/storages/dsh-slate/` 项目进度数据完整保留。
 
-## 下一步（如后续迭代）
+## 下一步（新会话可直接接手）
 
-- **用户端更新验证**：Windows 与 macOS 桌面端在 DSH 更新至 `@lightcheng/dsh-slate@0.1.2` 后，新发起或重跑带 `ops_bash` 执行证据的检查即可由核验器自动识别并标记「已通过」。
-- **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
-- **插件市场跟进**：PR #17699 满 24 小时（约 `2026-11-23 12:25`）后确认 `Submission gate` 转绿等待维护者合入。
+1. **攒齐改动后再发版（例如 `v0.1.3`）**：`main` 当前已有 commit `85bd948`（未包含在 `v0.1.2` 内），待后续一并积累其他改动需要发版时，统一修改 [plugin/package.json](plugin/package.json) `version`、同步 [RELEASE.md](RELEASE.md) 与 [plugin/RELEASE.md](plugin/RELEASE.md)，运行 `cd plugin && npm run verify && npm pack --dry-run`，推送 `main` 后通过 `gh release create v0.1.3 --target main` 发布（自动 OIDC 推 npm `latest`）。
+2. **插件市场跟进**：[awesome-dsh-plugin PR #17699](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/17699) 满 24 小时门禁（约 `2026-11-23 12:25`）后，复查 `Submission gate` 是否转绿并跟进合入状态。
+3. **可选清理**：若不再需要早期占位包，在发布 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0` 或使用 `npm deprecate` 标弃。

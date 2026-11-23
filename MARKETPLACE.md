@@ -4,37 +4,36 @@ This document is the release & DSH Marketplace submission checklist for **DSH-Sl
 
 ## Package
 
-- npm package name: `@lightcheng/dsh-slate`
+- npm package name: `@lightcheng/dsh-slate` (<https://www.npmjs.com/package/@lightcheng/dsh-slate>)
 - Publishable root: `plugin/` (`private: false`)
-- Initial version: `0.1.0`
+- Latest published version: `0.1.2` (see `plugin/package.json`)
 - License: `MIT` ([LICENSE](LICENSE))
 - Keywords include `dsh-plugin`
 - `dsh.bundle.patch` points to `./cordis.patch.yml` (`name: '@lightcheng/dsh-slate'`)
 
-## Publishing Checklist (npm + GitHub Release)
+## Publishing Checklist (npm + GitHub Release — Live via OIDC)
 
-1. **Create public GitHub repository**: `https://github.com/light-cheng/DSH-Slate`
-   - Add topics: `dsh-plugin`, `dsh`, `deepseek`, `project-progress`, `sidebar`.
-   - Set default branch to `main`.
-2. **Configure npm Trusted Publisher (OIDC)** on [npmjs.com](https://www.npmjs.com/) for package `@lightcheng/dsh-slate` (first publish may require either a one-time initial placeholder or `npm publish --access public` from `plugin/`, then bind Trusted Publishing):
+1. **Public GitHub repository**: <https://github.com/light-cheng/DSH-Slate>
+   - Topics: `dsh-plugin`, `dsh`, `deepseek`, `project-progress`, `sidebar`; default branch `main`.
+2. **npm Trusted Publisher (OIDC)** configured on [npmjs.com](https://www.npmjs.com/) for `@lightcheng/dsh-slate`:
    - **Organization / Owner**: `light-cheng`
    - **Repository**: `DSH-Slate`
    - **Workflow filename**: `release.yml`
-   - **Environment**: *(leave empty)*
-3. **Verify before tagging**:
+   - **Environment**: *(empty)*
+3. **Verify before tagging a new release**:
    ```sh
    cd plugin
    npm run verify
    npm pack --dry-run
    ```
-4. **Push & tag GitHub Release**:
-   - Push `main` to `origin`.
-   - Publish a GitHub Release tagged `v0.1.0` matching `plugin/package.json`'s `version`.
-   - `.github/workflows/release.yml` verifies `TAG#v == version`, runs `npm run verify` inside `plugin/`, and executes `npm publish --access public --tag latest` with automatic provenance via OIDC.
+4. **Push & publish GitHub Release**:
+   - Update `plugin/package.json` `version`, `RELEASE.md`, and `plugin/RELEASE.md`, then push `main` to `origin`.
+   - Publish a GitHub Release tagged `vX.Y.Z` matching `plugin/package.json`'s `version`.
+   - `.github/workflows/release.yml` verifies `TAG#v == version`, runs `npm run verify` inside `plugin/`, and executes `npm publish --access public --tag latest` with automatic provenance via OIDC (`v0.1.0`–`v0.1.2` already published).
 
 ## awesome-dsh-plugin Submission
 
-Create `data/plugins/light-cheng__DSH-Slate--plugin.yml` in [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) once the public repository passes `MIN_AGE_DAYS = 1` (at least 24 hours old):
+Submitted via [awesome-dsh-plugin/awesome-dsh-plugin#17699](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/17699) (`data/plugins/light-cheng__DSH-Slate--plugin.yml`; automated `PR check` passed, waiting on the 24-hour `MIN_AGE_DAYS = 1` repository gate auto-rescan):
 
 ```yaml
 url: https://github.com/light-cheng/DSH-Slate/tree/main/plugin

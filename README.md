@@ -19,10 +19,10 @@ One project often spans multiple DSH sessions. Instead of opening past chats one
 
 - **Workspace-isolated persistent state**: stores each project by canonicalized (`realpath`) workspace path under `${DSH_HOME}/storages/dsh-slate/projects/`, guarded by an in-process queue, `O_EXCL` cross-process file lock, stale-lock eviction, atomic temp+rename writes, and filesystem watchers. Concurrent Web and Headless sessions write without losing updates.
 - **Automatic progress sync (`systemPrompt.section`)**: conditionally injects a compact workspace snapshot (`dsh-slate:project-progress`) listing active `taskId`s, project acceptance criteria, locked goal flags, pending `todo` checks, and open issues whenever `project_progress_report` is available. Models update progress proactively after substantive edits/tests, skip read-only Q&A turns, and avoid overwriting project-level acceptance criteria on subtask reports.
-- **Completion is not acceptance (`FR-05` evidence verification)**: `project_progress_report` resolves authoritative `sessionId` and `cwd` directly from DSH's `exec.agent` context (no spoofable `sessionId` argument). When an agent reports a check as `passed`, the host cross-checks actual `tool/call` and `tool/result` shell executions (`exitCode === 0`): unexecuted claims downgrade to `todo`, failures record as `failed`, long outputs spill safely to `outputs/<hash>/chk-<hash>.txt` (`64 KiB` cap), and cross-session real executions clear stale `todo` placeholders on the same task.
-- **Zero-token bootstrap hints & bounded Quick Init**: empty workspaces display read-only Git facts (`branch`, `latestTag`, uncommitted file count, latest commit) and real sidebar session titles (from DSH `session/list`, filtering blank drafts) at 0 model tokens, plus a one-click **快速初始化** button (`typertGateway`) that reads at most 1–2 root overview files to bootstrap a concise 1-sentence goal and `todo` baseline checks in seconds.
-- **Manual overrides & instant restore**: project goal, acceptance criteria, task priority, per-task progress estimate, and next deliverable can all be edited in-place inside a neutral grayscale editor. Locked fields show `· 手动调整`, resist subsequent session reports (while still collecting live test evidence), and can be unlocked via **恢复会话汇报**.
-- **Cross-session navigation & persistence**: clicking any task title or **最近通过** item jumps straight to the real `sessionId` (`ctx.uiWorkspace.openSession`) and keeps the Slate rightbar tab mounted and visible.
+- **Completion is not acceptance (`FR-05` evidence verification)**: `project_progress_report` resolves authoritative `sessionId` and `cwd` directly from DSH's `exec.agent` context (no spoofable `sessionId` argument). When an agent reports a check as `passed`, the host cross-checks actual `tool/call` and `tool/result` shell executions (`exitCode === 0`, covering built-in `bash`/`pwsh`/`shell` as well as `dsh-ops` `ops_bash` with normalized Windows path/quote matching): unexecuted claims downgrade to `todo`, failures/aborts/policy refusals record as `failed`, long outputs spill safely to `outputs/<hash>/chk-<hash>.txt` (`64 KiB` cap), same-session TDD red-to-green renames reuse the active unverified task, and cross-session real executions clear stale `todo` placeholders and superseded `failed` checks on the same task.
+- **Zero-token bootstrap hints & bounded Quick Init**: empty workspaces display read-only Git facts (`branch`, `latestTag`, uncommitted file count, latest commit) and an expandable vertical list of real sidebar sessions (filtering archived, blank, deleted, and subagent sessions) at 0 model tokens, plus a one-click **快速初始化** button (`typertGateway`) that reads at most 1–2 root overview files to bootstrap a concise 1-sentence goal and `todo` baseline checks in seconds.
+- **Manual overrides, task deletion & instant restore**: project goal, acceptance criteria, task priority, per-task progress estimate, and next deliverable can all be edited in-place inside a neutral grayscale editor. Locked fields show `· 手动调整`, resist subsequent session reports (while still collecting live test evidence), and can be unlocked via **恢复会话汇报**. Obsolete or orphaned task cards can be removed via an inline two-step **删除任务** confirmation (preserving workspace issues).
+- **Cross-session navigation guard & persistence**: clicking any historical session, task title, or **最近通过** item checks live session availability, falls back to another surviving live session on multi-session tasks, avoids bouncing to the DSH Home screen when a session is deleted or archived (showing an inline notice plus `会话已删除` / `会话已归档`), and keeps the Slate rightbar tab mounted across valid switches.
 - **Native monochrome DSH UI**: built on `--dsw-*` semantic theme variables and DSH typography (no green, no blue in neutral controls/editors; red reserved strictly for failures/severe issues and amber for waiting/blocked states), requesting ~`420px` initial width without overriding user-dragged widths, paired with dual-theme light/dark `16px` tab icons.
 
 ## Interface
@@ -74,7 +74,7 @@ DSH Agent Sessions (Web / Desktop / Headless)
 
 ## Installation
 
-### From npm (after publishing)
+### From npm
 
 ```sh
 dsh plugin --profile desktop add @lightcheng/dsh-slate
@@ -103,7 +103,7 @@ If DSH reports `restart-required`, restart DeepSeek Harness so the desktop app r
 
 ```sh
 cd plugin
-npm run verify      # Build client bundle, verify icons/colors, run 14 unit & concurrency tests
+npm run verify      # Build client bundle, verify icons/colors, run 18 unit & concurrency tests
 npm pack --dry-run  # Inspect publishable tarball contents
 ```
 
