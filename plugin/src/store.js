@@ -208,11 +208,12 @@ export function createProjectStore(options = {}) {
   function enqueueInProcess(key, fn) {
     const prev = inProcessTails.get(key) || Promise.resolve();
     const next = prev.then(fn, fn);
-    const settled = next.finally(() => {
+    const cleanup = () => {
       if (inProcessTails.get(key) === settled) {
         inProcessTails.delete(key);
       }
-    });
+    };
+    const settled = next.then(cleanup, cleanup);
     inProcessTails.set(key, settled);
     return next;
   }

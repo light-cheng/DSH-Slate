@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { createRpcDispatcher } from '../src/rpc.js';
 import { createProjectStore } from '../src/store.js';
 import { createReportTool } from '../src/tool.js';
+import { applySessionReport } from '../src/domain.js';
 
 function createMockCtx(extra = {}) {
   const services = new Map(Object.entries(extra));
@@ -117,6 +118,41 @@ test('RPC dispatcher handles getState, mutations, restore, and error responses c
     const badEndpoint = await dispatch('nope', { sessionId: 'session-web-1' });
     assert.equal(badEndpoint.ok, false);
     assert.equal(badEndpoint.error.code, 'slate/unknown-endpoint');
+
+    // deleteTask removes task & checks, detaches issues, and persists
+    await store.mutate(ws, (current, helpers) =>
+      applySessionReport(
+        current,
+        {
+          task: '待移除初始化任务',
+          workStatus: 'done',
+          progressEstimate: 100,
+          nextDeliverable: '无',
+          summary: '测试插入',
+          checks: [{ id: 'chk-rpc-del', title: '检查项', state: 'todo' }],
+          issues: [{ id: 'iss-rpc-keep', severity: 'P1', title: '独立问题' }],
+        },
+        { sessionId: 'session-old-9999', workspacePath: ws, now: helpers.now }
+      ).project
+    );
+
+    const beforeDel = await dispatch('getState', { sessionId: 'session-web-1' });
+    assert.equal(beforeDel.value.tasks.length, 1);
+    const delId = beforeDel.value.tasks[0].id;
+
+    const delMissing = await dispatch('deleteTask', { sessionId: 'session-web-1', taskId: 'task-not-found' });
+    assert.equal(delMissing.ok, false);
+    assert.match(delMissing.error.message, /Unknown task/);
+
+    const delRes = await dispatch('deleteTask', { sessionId: 'session-web-1', taskId: delId });
+    assert.equal(delRes.ok, true);
+    assert.equal(delRes.value.tasks.length, 0);
+    assert.equal(delRes.value.checks.length, 0);
+    assert.equal(delRes.value.issues.length, 1);
+    assert.equal(delRes.value.issues[0].taskId, null);
+
+    const afterReload = await store.read(ws);
+    assert.equal(afterReload.tasks.length, 0);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

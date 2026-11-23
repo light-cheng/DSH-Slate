@@ -330,6 +330,35 @@ test('collectGitSnapshot, collectWorkspaceContext & buildQuickInitPrompt on git 
       assert.match(boundedPrompt, /Active Session 5/);
       assert.equal(boundedPrompt.includes('Active Session 6'), false);
     }
+
+    // Verify collectWorkspaceSessions matches via currentSessionId even when workspace path differs
+    const ctxBySessionId = createServiceHostMock({
+      workspaceRegistry: {
+        list: () => [
+          {
+            id: 'ws-session-match',
+            path: '/some/different/case/Path',
+            sessionIds: ['ses-cur-diff-case', 'ses-peer-1'],
+          },
+        ],
+      },
+      typertGateway: {
+        async invoke(req) {
+          if (req.namespace === 'session' && req.method === 'list') {
+            return {
+              items: [
+                { sessionId: 'ses-peer-1', blank: false, updatedAt: 1795300000000, displayTitle: '跨路径匹配会话' },
+              ],
+            };
+          }
+          return {};
+        },
+      },
+    });
+    const sessionMatchRes = await collectWorkspaceContext(ctxBySessionId, gitRepo, 'ses-cur-diff-case');
+    assert.equal(sessionMatchRes.workspaceId, 'ws-session-match');
+    assert.equal(sessionMatchRes.totalSessions, 1);
+    assert.equal(sessionMatchRes.recentSessions[0].title, '跨路径匹配会话');
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

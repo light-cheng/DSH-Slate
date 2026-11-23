@@ -110,6 +110,17 @@ export function detectOverviewFiles(workspacePath) {
   return OVERVIEW_CANDIDATES.filter((name) => existsSync(join(workspacePath, name))).slice(0, 4);
 }
 
+function pathsEqual(a, b) {
+  const ca = canonicalizeWorkspacePath(a);
+  const cb = canonicalizeWorkspacePath(b);
+  if (!ca || !cb) return false;
+  if (ca === cb) return true;
+  if (process.platform === 'win32' || /^[a-zA-Z]:[\\/]/.test(ca) || /^[a-zA-Z]:[\\/]/.test(cb)) {
+    return ca.toLowerCase() === cb.toLowerCase();
+  }
+  return false;
+}
+
 /**
  * Collect matching workspaceId and up to 5 recent session headers (newest first).
  * @param {object} ctx
@@ -121,7 +132,10 @@ export async function collectWorkspaceSessions(ctx, rawWorkspacePath, excludeSes
   const registry = ctx.get?.('workspaceRegistry');
   const workspaces = registry?.list?.();
   const matched = Array.isArray(workspaces)
-    ? workspaces.find((ws) => canonicalizeWorkspacePath(ws?.path) === targetPath)
+    ? (
+        (excludeSessionId && workspaces.find((ws) => Array.isArray(ws?.sessionIds) && ws.sessionIds.includes(excludeSessionId))) ||
+        workspaces.find((ws) => pathsEqual(ws?.path, targetPath))
+      )
     : null;
   const archivedRaw = registry?.archivedSessionIds;
   const archivedSet = new Set(

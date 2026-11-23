@@ -5,6 +5,7 @@ import {
   buildProjectView,
   completeTask,
   createEmptyProject,
+  deleteTask,
   restoreGoal,
   restoreTask,
   setIssueStatus,
@@ -506,4 +507,76 @@ test('TDD red-to-green reuses unverified session task without taskId, clears sup
     { sessionId: 'session-d-4444', workspacePath: '/tmp/proj-tdd', now: '2026-11-22T11:40:00.000Z' }
   ));
   assert.equal(project.activity.length, countBefore);
+});
+
+test('deleteTask removes task and attached checks, detaches issues, recalculates view, and guards unknown taskId', () => {
+  let project = createEmptyProject('/tmp/proj-del', '2026-11-23T01:00:00.000Z');
+
+  // Task A: verified task with a failing check and a linked issue
+  ({ project } = applySessionReport(
+    project,
+    {
+      projectGoal: '清理过期任务验证',
+      task: '待删除任务 A',
+      priority: 'P1',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '已归档任务输出',
+      summary: 'A 上报完成',
+      checks: [
+        { id: 'chk-a-pass', title: 'A 通过测试', state: 'passed', command: 'npm test', exitCode: 0, verifiedBy: 'evidence', evidenceMatched: true },
+        { id: 'chk-a-fail', title: 'A 失败检查', state: 'failed', command: 'npm run lint', exitCode: 1, note: 'exit 1' },
+      ],
+      issues: [
+        { id: 'iss-a-open', severity: 'P2', title: 'A 关联遗留问题', detail: '需要后续跟进' },
+      ],
+    },
+    { sessionId: 'session-deadbeef', workspacePath: '/tmp/proj-del', now: '2026-11-23T01:01:00.000Z' }
+  ));
+
+  // Task B: active task that must remain untouched
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '保留任务 B',
+      priority: 'P0',
+      workStatus: 'in_progress',
+      progressEstimate: 50,
+      nextDeliverable: '继续开发',
+      summary: 'B 开发中',
+      checks: [
+        { id: 'chk-b-todo', title: 'B 待检查', state: 'todo', note: '待执行' },
+      ],
+    },
+    { sessionId: 'session-livebeef', workspacePath: '/tmp/proj-del', now: '2026-11-23T01:02:00.000Z' }
+  ));
+
+  const taskA = project.tasks.find((t) => t.title === '待删除任务 A');
+  const taskB = project.tasks.find((t) => t.title === '保留任务 B');
+  assert.ok(taskA && taskB);
+
+  let view = buildProjectView(project);
+  assert.equal(view.tasks.length, 2);
+  assert.equal(view.checks.length, 3);
+  assert.equal(view.priorityItem?.id, 'chk-a-fail');
+
+  assert.throws(() => deleteTask(project, { taskId: 'task-missing' }), /Unknown task: task-missing/);
+
+  project = deleteTask(project, { taskId: taskA.id }, '2026-11-23T01:03:00.000Z');
+  view = buildProjectView(project);
+
+  assert.equal(view.tasks.length, 1);
+  assert.equal(view.tasks[0].id, taskB.id);
+  assert.deepEqual(view.checks.map((c) => c.id), ['chk-b-todo']);
+  assert.equal(view.issues.length, 1);
+  assert.equal(view.issues[0].id, 'iss-a-open');
+  assert.equal(view.issues[0].taskId, null);
+  assert.equal(view.issues[0].taskTitle, '');
+  assert.equal(view.summary.totalTasks, 1);
+  assert.equal(view.summary.inProgressCount, 1);
+  assert.equal(view.summary.awaitingAcceptanceCount, 0);
+  assert.equal(view.summary.openIssuesCount, 1);
+  assert.equal(view.latestVerified, null);
+  assert.equal(view.priorityItem?.id, 'iss-a-open');
+  assert.match(view.activity[0], /#deadbeef：你删除了任务「待删除任务 A」/);
 });

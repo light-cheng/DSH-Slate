@@ -2,6 +2,7 @@ import { collectWorkspaceContext, triggerQuickInit } from './bootstrap.js';
 import {
   buildProjectView,
   completeTask,
+  deleteTask,
   restoreGoal,
   restoreTask,
   setIssueStatus,
@@ -151,6 +152,13 @@ export function createRpcDispatcher(ctx, store) {
         case 'verifyTask': {
           const { project } = await store.mutate(canonical, (current, helpers) =>
             verifyTask(current, { taskId: String(payload.taskId || '') }, helpers.now)
+          );
+          return rpcSuccess(buildProjectView(project));
+        }
+
+        case 'deleteTask': {
+          const { project } = await store.mutate(canonical, (current, helpers) =>
+            deleteTask(current, { taskId: String(payload.taskId || '') }, helpers.now)
           );
           return rpcSuccess(buildProjectView(project));
         }

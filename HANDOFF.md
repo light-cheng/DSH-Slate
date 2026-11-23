@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
-更新时间：2026-11-22  
-当前阶段：**`v0.1.0` 已正式发布到 GitHub、npm 与提交插件市场 PR——GitHub 仓库 `light-cheng/DSH-Slate`、GitHub Release `v0.1.0`、npm `@lightcheng/dsh-slate@0.1.0`（OIDC Provenance）均已上线，桌面端已切换为 `@lightcheng/dsh-slate@0.1.0`，且 `awesome-dsh-plugin` PR #17699 已提交等待 24 小时新仓门禁自动放行。**
+更新时间：2026-11-23  
+当前阶段：**正在准备发布修复版 `v0.1.1`（版本号已升至 `0.1.1`，包含失效会话防误跳回主界面、任务行内确认删除、`store.mutate` 异常队列防泄漏、Windows 反斜杠路径头显示与盘符大小写匹配修复）。**
 
 ## 从这里开始
 
@@ -38,7 +38,21 @@ npm pack --dry-run
 
 ## 本轮已验证项
 
-- **发布前逻辑修复与元数据收口**：
+- **Windows 实测问题修复（未发布本地工作区修改）**：
+  - `plugin/src/client.js` & `plugin/src/styles.css`：
+    - 会话跳转守卫（`resolveSessionTarget` / `safeOpenSession`）：任务标题、最近通过、检查/问题来源按钮及历史会话跳转均先核对实时 `useSessions((s) => s?.byId)` 与 `archivedSessionIds`，若多会话任务主会话缺失但同任务仍有其他未归档会话则回退跳转；若均已删除或归档则禁止调用 `ctx.uiWorkspace.openSession`（避免主区域误跳回“探索未至之境”空页），就地展示 `.sl-notice.is-warn` 提示，并在任务元信息与详情按钮明确标注 `会话已删除` / `会话已归档`。`openSession` 外层同时加 `try/catch` 兜底；轮询 `getState` 恢复正常时自动清除瞬时 `Failed to fetch` 错误横幅。
+    - Windows 工作区名称与路径兼容：`workspaceDisplayName` 按 `/` 与 `\` 双分隔符提取末段目录名（修复 Windows 标题栏显示 `C:\Users\...\C...`）；`liveSessionSnapshot` 路径归一化统一斜杠并规范 Windows 盘符大小写。
+    - 任务行内二次删除：在 `.sl-task-actions` 增加 `删除任务` -> `确认删除`（`--slate-danger`）/ `取消` 行内二次确认交互，清理因旧初始化或已删会话残留的任务卡。
+  - `plugin/src/domain.js` & `plugin/src/rpc.js`：新增 `deleteTask` 领域函数与 `deleteTask` RPC 端点（移除目标任务与绑定检查，将关联问题 `taskId` 置为 `null` 保留跟进，记录动态并重算统计、优先处理与最近通过）。
+  - `plugin/src/bootstrap.js`：增加 `pathsEqual`（Windows 盘符大小写不敏感比较）并优先通过 `excludeSessionId` 在 `workspaceRegistry` 中反查所属工作区。
+  - `plugin/src/store.js`：修复 `enqueueInProcess` 中 `next.finally(...)` 在 `updater` 抛错时产生未捕获拒绝（`unhandledRejection`）的潜在隐患，改为 `.then(cleanup, cleanup)`。
+- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`16/16` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.1.tgz`（`34` 个文件，`2.3 MB`）。
+- 隔离 DSH Web + Playwright 失效会话实测（最新运行，使用临时 `DSH_HOME` 并在测试后彻底清理 `.tmp/`）：
+  - 真实活跃会话（`#6ff57aa9`）与已删会话任务（`#35cbd432`）同屏渲染，任务卡准确标记 `· 会话已删除`；
+  - 点击已删会话任务标题不再跳回主页或报错，页面保留在活跃会话并展示黄色单色提示栏「会话 #35cbd432 已删除或不存在，无法跳转；如不再需要，可点击该任务下的「删除任务」移除。」，浏览器控制台与页面错误 `0`；
+  - 点击 `删除任务` -> `确认删除` 后任务数由 `2` 降为 `1`、关联待检清除、关联问题独立保留，刷新页面后保持一致；实测截图已保存至 [v3-missing-session-delete.png](previews/v3-missing-session-delete.png)（原 `~/.dsh` SHA-256 前后一致）。
+
+- **v0.1.0 基线发布前已验证项**（历史已发版本证据）：
   - `src/domain.js`、`src/prompt.js` & `src/tool.js`：同一 `taskId` 收到后续实测 `passed`/`failed` 检查时自动清理同任务遗留未执行 `todo` 占位及已被同命令/同标题/实测通过并完成替代的旧 `failed` 检查；`resolveTaskId` 在同一会话已有唯一未验收任务且未传 `taskId` 时自动复用（修复 TDD 红转绿改名产生重复红灯卡片）；用户手动点击「验收通过」的任务，其历史 `failed` 检查从顶部「优先处理」与提示词「未通过检查」中忽略（同时在 `验收记录` 如实保留历史 `failed` 记录）；相邻重复动态去重；引导子任务汇报省略 `projectGoal`/`acceptanceCriteria`。
   - `src/bootstrap.js` & `src/client.js`：通过 `typertGateway` 查询 `session/list`（`8000ms` 超时），过滤 `workspaceRegistry.archivedSessionIds`、`blank` 草稿、`origin === 'subagent'` 与已缺失日志的旧会话 ID，并修复 newest-first `sessionIds` 截断排序；客户端同时直接订阅 `useSessions((s) => s?.byId)` 与 `useWorkspaces`（`items` / `archivedSessionIds`）同步左侧栏真实标题，空态历史会话改用全宽纵向行表展示并默认显示 3 条，支持 `展开其余 N 个` / `收起` 查看全部，Quick Init prompt 仍严格上限 5 条引用。
   - `src/evidence.js`：增加壳命令退出码掩码检测（禁止 `|| true`、`; echo` 等将失败命令伪造为 `exitCode === 0` 通过，且 `failed` 检查不输出自相矛盾的 `退出码：0`）。
@@ -56,5 +70,6 @@ npm pack --dry-run
 
 ## 下一步（如后续迭代）
 
+- **待用户确认发布 `v0.1.1`**：确认后将工作区修复升版提交并打 GitHub Release `v0.1.1`（通过 `.github/workflows/release.yml` 自动触发 npm OIDC 发布 `@lightcheng/dsh-slate@0.1.1`），随后 macOS 与 Windows 端在 DSH 更新安装新版本即可验证实机效果。
 - **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
 - **插件市场跟进**：PR #17699 满 24 小时（约 `2026-11-23 12:25`）后确认 `Submission gate` 转绿等待维护者合入。

@@ -44,10 +44,15 @@ const EMPTY_VIEW = {
 let initialWidthApplied = false;
 
 function workspaceDisplayName(workspacePath) {
-  const clean = String(workspacePath || '').replace(/\/+$/, '');
+  const clean = String(workspacePath || '').replace(/[/\\]+$/, '');
   if (!clean) return '当前项目';
-  const parts = clean.split('/');
+  const parts = clean.split(/[/\\]/).filter(Boolean);
   return parts.at(-1) || clean;
+}
+
+function formatSessionLabel(id) {
+  const clean = String(id || '').replace(/^session-/, '').trim();
+  return clean ? `#${clean.slice(0, 8)}` : '';
 }
 
 function workStatusText(task) {
@@ -104,20 +109,32 @@ function App(props) {
   const workspaceItems = useWorkspaces ? useWorkspaces((w) => w?.items) : null;
   const archivedSessionIds = useWorkspaces ? useWorkspaces((w) => w?.archivedSessionIds) : null;
 
+  const archivedSessionSet = useMemo(
+    () =>
+      new Set(
+        archivedSessionIds && typeof archivedSessionIds[Symbol.iterator] === 'function'
+          ? [...archivedSessionIds]
+          : []
+      ),
+    [archivedSessionIds]
+  );
+
+  const hasLiveSessions = Boolean(
+    sessionsById &&
+      typeof sessionsById === 'object' &&
+      Object.keys(sessionsById).length > 0
+  );
+
   const liveSessionSnapshot = useMemo(() => {
-    if (
-      !sessionsById ||
-      typeof sessionsById !== 'object' ||
-      Object.keys(sessionsById).length === 0 ||
-      !Array.isArray(workspaceItems)
-    ) {
+    if (!hasLiveSessions || !Array.isArray(workspaceItems)) {
       return null;
     }
 
     const normalizePath = (p) => {
       if (typeof p !== 'string') return '';
-      const trimmed = p.replace(/[/\\]+$/, '');
-      return trimmed || (p ? '/' : '');
+      const trimmed = p.replace(/\\/g, '/').replace(/\/+$/, '');
+      const normalizedDrive = trimmed.replace(/^([A-Z]):(?=\/|$)/, (_, d) => `${d.toLowerCase()}:`);
+      return normalizedDrive || (p ? '/' : '');
     };
     const targetPath = normalizePath(workspacePath);
     const matched =
@@ -128,21 +145,16 @@ function App(props) {
       return null;
     }
 
-    const archivedSet = new Set(
-      archivedSessionIds && typeof archivedSessionIds[Symbol.iterator] === 'function'
-        ? [...archivedSessionIds]
-        : []
-    );
     const seen = new Set();
     const items = [];
 
     for (const id of matched.sessionIds) {
       if (typeof id !== 'string' || !id || id === sessionId || seen.has(id)) continue;
-      if (archivedSet.has(id)) continue;
+      if (archivedSessionSet.has(id)) continue;
       const summary = sessionsById[id];
       if (!summary || summary.blank === true || summary.origin === 'subagent') continue;
       seen.add(id);
-      const label = `#${id.replace(/^session-/, '').slice(0, 8)}`;
+      const label = formatSessionLabel(id);
       const title =
         String(
           summary.displayTitle ||
@@ -163,12 +175,13 @@ function App(props) {
       totalSessions: items.length,
       recentSessions: items,
     };
-  }, [sessionsById, workspaceItems, archivedSessionIds, sessionId, workspacePath]);
+  }, [hasLiveSessions, sessionsById, workspaceItems, archivedSessionSet, sessionId, workspacePath]);
 
   const [project, setProject] = useState(EMPTY_VIEW);
   const [workspaceContext, setWorkspaceContext] = useState(null);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [initStatus, setInitStatus] = useState('');
+  const [navNotice, setNavNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -177,6 +190,7 @@ function App(props) {
   const [criteriaDraft, setCriteriaDraft] = useState('');
 
   const [editingTaskId, setEditingTaskId] = useState(null);
+  const [confirmDeleteTaskId, setConfirmDeleteTaskId] = useState(null);
   const [taskDraft, setTaskDraft] = useState({ priority: 'P1', progressEstimate: 0, nextDeliverable: '' });
 
   const [openCheckId, setOpenCheckId] = useState(null);
@@ -225,6 +239,9 @@ function App(props) {
 
   useEffect(() => {
     setShowAllSessions(false);
+    setNavNotice('');
+    setConfirmDeleteTaskId(null);
+    setEditingTaskId(null);
   }, [sessionId, workspacePath]);
 
   useEffect(() => {
@@ -258,6 +275,7 @@ function App(props) {
     const timer = setInterval(async () => {
       try {
         const next = await callRpc('getState', { sessionId, workspacePath });
+        setError((prev) => (prev ? '' : prev));
         if (!next) return;
         if (
           next.revision !== latestRevisionRef.current ||
@@ -341,7 +359,68 @@ function App(props) {
     }
   }, [callRpc, sessionId, workspacePath, openSession]);
 
+  const resolveSessionTarget = useCallback(
+    (preferredId, fallbackIds = []) => {
+      const seen = new Set();
+      const candidates = [];
+      for (const raw of [preferredId, ...(Array.isArray(fallbackIds) ? fallbackIds : [])]) {
+        const id = typeof raw === 'string' ? raw.trim() : '';
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        candidates.push(id);
+      }
+      if (candidates.length === 0) {
+        return { status: 'missing', sessionId: '', label: '' };
+      }
+      if (!hasLiveSessions) {
+        return {
+          status: 'unknown',
+          sessionId: candidates[0],
+          label: formatSessionLabel(candidates[0]),
+        };
+      }
+      for (const id of candidates) {
+        if (sessionsById[id] && !archivedSessionSet.has(id)) {
+          return {
+            status: 'openable',
+            sessionId: id,
+            label: formatSessionLabel(id),
+          };
+        }
+      }
+      const primary = candidates[0];
+      return {
+        status: archivedSessionSet.has(primary) ? 'archived' : 'missing',
+        sessionId: primary,
+        label: formatSessionLabel(primary),
+      };
+    },
+    [hasLiveSessions, sessionsById, archivedSessionSet]
+  );
+
+  const safeOpenSession = useCallback(
+    (preferredId, { fallbackIds = [], label = '', allowDeleteHint = false } = {}) => {
+      const target = resolveSessionTarget(preferredId, fallbackIds);
+      if (target.status === 'openable' || target.status === 'unknown') {
+        setNavNotice('');
+        if (!target.sessionId || target.sessionId === sessionId) {
+          return;
+        }
+        openSession(target.sessionId);
+        return;
+      }
+      const displayLabel = label || target.label || '对应会话';
+      const reason = target.status === 'archived' ? '已归档' : '已删除或不存在';
+      const suffix = allowDeleteHint
+        ? '，无法跳转；如不再需要，可点击该任务下的「删除任务」移除。'
+        : '，无法跳转。';
+      setNavNotice(`会话 ${displayLabel} ${reason}${suffix}`);
+    },
+    [resolveSessionTarget, sessionId, openSession]
+  );
+
   const startTaskEdit = (task) => {
+    setConfirmDeleteTaskId(null);
     setEditingTaskId(task.id);
     setTaskDraft({
       priority: task.priority,
@@ -427,6 +506,10 @@ function App(props) {
 
   const renderTask = (task) => {
     const isEditing = editingTaskId === task.id;
+    const isConfirmingDelete = confirmDeleteTaskId === task.id;
+    const fallbackSessionIds = [...(task.sessionIds || [])].reverse();
+    const taskNav = resolveSessionTarget(task.primarySessionId, fallbackSessionIds);
+    const isSessionUnavailable = taskNav.status === 'missing' || taskNav.status === 'archived';
     const statusLabel = workStatusText(task);
     const statusClass = task.verified
       ? 'sl-status-verified'
@@ -445,9 +528,16 @@ function App(props) {
         h('div', { className: 'sl-task-head-main' },
           h('button', {
             type: 'button',
-            className: 'sl-task-title',
-            title: `打开会话 ${task.primaryLabel}`,
-            onClick: () => openSession(task.primarySessionId),
+            className: `sl-task-title ${isSessionUnavailable ? 'is-unavailable' : ''}`,
+            title: isSessionUnavailable
+              ? `来源会话 ${task.primaryLabel} ${taskNav.status === 'archived' ? '已归档' : '已删除或不存在'}，无法跳转`
+              : `打开会话 ${taskNav.label || task.primaryLabel}`,
+            onClick: () =>
+              safeOpenSession(task.primarySessionId, {
+                fallbackIds: fallbackSessionIds,
+                label: task.primaryLabel,
+                allowDeleteHint: true,
+              }),
           }, task.title),
           h('div', { className: 'sl-task-meta', title: (task.sessionIds || []).join(', ') },
             h('span', null, task.priority),
@@ -455,6 +545,12 @@ function App(props) {
             h('span', null, (task.sessionLabels || []).map((s) => s.label).join(' ') || task.primaryLabel),
             h('span', null, '·'),
             h('span', { className: statusClass }, statusLabel),
+            isSessionUnavailable
+              ? [
+                  h('span', { key: 'sep-unavail' }, '·'),
+                  h('span', { key: 'txt-unavail', className: 'sl-session-missing' }, taskNav.status === 'archived' ? '会话已归档' : '会话已删除'),
+                ]
+              : null,
             task.hasManualOverride ? h('span', { className: 'sl-override-chip' }, '· 手动调整') : null
           )
         ),
@@ -491,7 +587,36 @@ function App(props) {
           className: 'sl-text-btn',
           disabled: busy,
           onClick: () => runMutation('verifyTask', { taskId: task.id }),
-        }, '验收通过') : null
+        }, '验收通过') : null,
+        isConfirmingDelete
+          ? h('span', { className: 'sl-delete-confirm' },
+              h('button', {
+                type: 'button',
+                className: 'sl-text-btn is-danger',
+                disabled: busy,
+                onClick: () =>
+                  runMutation('deleteTask', { taskId: task.id }, () => {
+                    setConfirmDeleteTaskId(null);
+                    setNavNotice('');
+                    if (editingTaskId === task.id) setEditingTaskId(null);
+                  }),
+              }, '确认删除'),
+              h('button', {
+                type: 'button',
+                className: 'sl-text-btn',
+                disabled: busy,
+                onClick: () => setConfirmDeleteTaskId(null),
+              }, '取消')
+            )
+          : h('button', {
+              type: 'button',
+              className: 'sl-text-btn',
+              disabled: busy,
+              onClick: () => {
+                setEditingTaskId(null);
+                setConfirmDeleteTaskId(task.id);
+              },
+            }, '删除任务')
       ),
       isEditing ? h('div', {
         className: 'sl-editor',
@@ -557,12 +682,24 @@ function App(props) {
         className: 'sl-text-btn sl-refresh',
         disabled: busy,
         onClick: () => {
+          setNavNotice('');
           refresh();
           loadWorkspaceContext();
         },
       }, '刷新')
     ),
-    h('div', { className: `sl-notice ${error ? 'is-error' : ''}`, role: error ? 'alert' : undefined }, error || updatedText),
+    error
+      ? h('div', { className: 'sl-notice is-error', role: 'alert' }, error)
+      : navNotice
+        ? h('div', { className: 'sl-notice is-warn', role: 'status' },
+            h('span', null, navNotice),
+            h('button', {
+              type: 'button',
+              className: 'sl-text-btn sl-notice-dismiss',
+              onClick: () => setNavNotice(''),
+            }, '知道了')
+          )
+        : h('div', { className: 'sl-notice' }, updatedText),
 
     goalEditing
       ? goalEditor
@@ -635,7 +772,7 @@ function App(props) {
                                       type: 'button',
                                       className: 'sl-session-chip',
                                       title: `${item.title} (${item.label})`,
-                                      onClick: () => openSession(item.id),
+                                      onClick: () => safeOpenSession(item.id, { label: item.label }),
                                     },
                                       h('span', { className: 'sl-session-chip-title' }, item.title)
                                     )
@@ -695,15 +832,29 @@ function App(props) {
       }, project.priorityItem.kind === 'check' ? '查看检查  →' : '查看问题  →')
     ) : null,
 
-    project.latestVerified ? h('section', { className: 'sl-latest' },
-      h('span', { className: 'sl-latest-label' }, '最近通过'),
-      h('button', {
-        type: 'button',
-        className: 'sl-latest-link',
-        onClick: () => openSession(project.latestVerified.sessionId),
-      }, project.latestVerified.title),
-      h('span', { className: 'sl-latest-evidence' }, project.latestVerified.evidence)
-    ) : null,
+    project.latestVerified ? (() => {
+      const verifiedTask = tasks.find((t) => t.id === project.latestVerified.taskId);
+      const latestFallbacks = [...(verifiedTask?.sessionIds || [])].reverse();
+      const latestNav = resolveSessionTarget(project.latestVerified.sessionId, latestFallbacks);
+      const latestUnavailable = latestNav.status === 'missing' || latestNav.status === 'archived';
+      return h('section', { className: 'sl-latest' },
+        h('span', { className: 'sl-latest-label' }, '最近通过'),
+        h('button', {
+          type: 'button',
+          className: `sl-latest-link ${latestUnavailable ? 'is-unavailable' : ''}`,
+          title: latestUnavailable
+            ? `来源会话 ${project.latestVerified.sessionLabel || ''} ${latestNav.status === 'archived' ? '已归档' : '已删除或不存在'}，无法跳转`
+            : `打开会话 ${latestNav.label || project.latestVerified.sessionLabel || ''}`,
+          onClick: () =>
+            safeOpenSession(project.latestVerified.sessionId, {
+              fallbackIds: latestFallbacks,
+              label: project.latestVerified.sessionLabel || '',
+              allowDeleteHint: true,
+            }),
+        }, project.latestVerified.title),
+        h('span', { className: 'sl-latest-evidence' }, project.latestVerified.evidence)
+      );
+    })() : null,
 
     h('section', { className: 'sl-tasks' },
       h('div', { className: 'sl-section-head' },
@@ -723,6 +874,8 @@ function App(props) {
       checks.length > 0
         ? checks.map((check) => {
             const expanded = openCheckId === check.id;
+            const checkNav = resolveSessionTarget(check.sourceSessionId);
+            const checkSourceUnavailable = checkNav.status === 'missing' || checkNav.status === 'archived';
             return h('div', {
               key: check.id,
               className: `sl-list-row sl-check is-${check.state}`,
@@ -749,8 +902,10 @@ function App(props) {
                   h('button', {
                     type: 'button',
                     className: 'sl-text-btn',
-                    onClick: () => openSession(check.sourceSessionId),
-                  }, `打开来源会话 ${check.sourceLabel}`)
+                    onClick: () => safeOpenSession(check.sourceSessionId, { label: check.sourceLabel }),
+                  }, checkSourceUnavailable
+                    ? `来源会话 ${check.sourceLabel}（${checkNav.status === 'archived' ? '已归档' : '已删除'}）`
+                    : `打开来源会话 ${check.sourceLabel}`)
                 )
               ) : null
             );
@@ -767,6 +922,8 @@ function App(props) {
         ? issues.map((issue) => {
             const expanded = openIssueId === issue.id;
             const isHigh = issue.severity === 'P0' || issue.severity === 'P1';
+            const issueNav = resolveSessionTarget(issue.sourceSessionId);
+            const issueSourceUnavailable = issueNav.status === 'missing' || issueNav.status === 'archived';
             return h('div', {
               key: issue.id,
               className: `sl-list-row sl-issue ${issue.status === 'resolved' ? 'is-resolved' : ''}`,
@@ -789,8 +946,10 @@ function App(props) {
                   h('button', {
                     type: 'button',
                     className: 'sl-text-btn',
-                    onClick: () => openSession(issue.sourceSessionId),
-                  }, `打开来源会话 ${issue.sourceLabel}`),
+                    onClick: () => safeOpenSession(issue.sourceSessionId, { label: issue.sourceLabel }),
+                  }, issueSourceUnavailable
+                    ? `来源会话 ${issue.sourceLabel}（${issueNav.status === 'archived' ? '已归档' : '已删除'}）`
+                    : `打开来源会话 ${issue.sourceLabel}`),
                   h('button', {
                     type: 'button',
                     className: 'sl-text-btn',
@@ -930,7 +1089,13 @@ function apply(ctx) {
       calledOnMounted: false,
       confirmedWithTabs: false,
     };
-    ctx.uiWorkspace.openSession(targetSessionId);
+    try {
+      ctx.uiWorkspace.openSession(targetSessionId);
+    } catch {
+      pendingNav = null;
+      stopRetryTimer();
+      return;
+    }
     reconcileNavigation();
     stopRetryTimer();
     retryTimer = setInterval(reconcileNavigation, 60);

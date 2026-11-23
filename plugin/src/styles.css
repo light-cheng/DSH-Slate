@@ -90,6 +90,21 @@
   text-underline-offset: 3px;
 }
 
+.sl-text-btn.is-danger {
+  color: var(--slate-danger);
+  font-weight: 500;
+}
+
+.sl-text-btn.is-danger:hover {
+  color: var(--slate-danger);
+}
+
+.sl-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sl-mast .sl-refresh {
   margin-left: auto;
 }
@@ -105,6 +120,22 @@
   background: var(--slate-surface);
   border-left: 2px solid var(--slate-danger);
   padding: 6px 10px;
+}
+
+.sl-notice.is-warn {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--slate-warn);
+  background: var(--slate-surface);
+  border-left: 2px solid var(--slate-warn);
+  padding: 6px 10px;
+}
+
+.sl-notice-dismiss {
+  flex-shrink: 0;
+  color: var(--slate-muted);
 }
 
 .sl-goal {
@@ -453,6 +484,20 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
+}
+
+.sl-root .sl-task-title.is-unavailable,
+.sl-root .sl-latest-link.is-unavailable {
+  cursor: default;
+}
+
+.sl-task-title.is-unavailable:hover,
+.sl-latest-link.is-unavailable:hover {
+  text-decoration: none;
+}
+
+.sl-session-missing {
+  color: var(--slate-muted);
 }
 
 .sl-task-meta {

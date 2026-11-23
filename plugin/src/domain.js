@@ -547,6 +547,28 @@ export function verifyTask(current, { taskId }, now = new Date().toISOString()) 
 }
 
 /**
+ * Delete a task and remove its attached verification checks while preserving
+ * workspace issues (detaching any matching `issue.taskId` back to `null`).
+ */
+export function deleteTask(current, { taskId }, now = new Date().toISOString()) {
+  const project = cloneProject(current);
+  const index = project.tasks.findIndex((item) => item.id === taskId);
+  if (index < 0) throw new Error(`Unknown task: ${taskId}`);
+
+  const [removed] = project.tasks.splice(index, 1);
+  project.checks = project.checks.filter((check) => check.taskId !== taskId);
+  for (const issue of project.issues) {
+    if (issue.taskId === taskId) {
+      issue.taskId = null;
+    }
+  }
+  prependActivity(project, `${sessionLabel(removed.primarySessionId)}：你删除了任务「${removed.title}」`);
+  project.revision += 1;
+  project.updatedAt = now;
+  return project;
+}
+
+/**
  * Toggle issue resolution status (`open` or `resolved`).
  */
 export function setIssueStatus(current, { issueId, status }, now = new Date().toISOString()) {

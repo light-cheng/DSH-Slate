@@ -136,3 +136,47 @@ test('AC-06: 6 concurrent child processes mutating the same workspace lose zero 
     await rm(tempRoot, { recursive: true, force: true });
   }
 });
+
+test('store.mutate errors reject cleanly without unhandledRejection and keep queue healthy', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'dsh-slate-reject-'));
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const dshHome = join(tempRoot, 'dsh-home');
+    const ws = join(tempRoot, 'ws-reject');
+    await mkdir(ws, { recursive: true });
+    const store = createProjectStore({ dshHome });
+
+    await assert.rejects(
+      () => store.mutate(ws, () => {
+        throw new Error('simulated failure');
+      }),
+      /simulated failure/
+    );
+
+    await store.mutate(ws, (current, helpers) =>
+      applySessionReport(
+        current,
+        {
+          projectGoal: '错误恢复后仍可正常写入',
+          task: '恢复写入任务',
+          workStatus: 'done',
+          progressEstimate: 100,
+          nextDeliverable: '已恢复',
+          summary: '队列健康',
+        },
+        { sessionId: 'session-recover-1', workspacePath: helpers.workspacePath, now: helpers.now }
+      )
+    );
+
+    await new Promise((done) => setTimeout(done, 20));
+    assert.equal(unhandled.length, 0);
+    const persisted = await store.read(ws);
+    assert.equal(persisted.tasks.length, 1);
+    assert.equal(persisted.tasks[0].title, '恢复写入任务');
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});

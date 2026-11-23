@@ -8,6 +8,13 @@ English is the default; the Chinese version follows below.
 
 Creating a GitHub release publishes `plugin/` (`@lightcheng/dsh-slate`) to npm automatically (`.github/workflows/release.yml`, npm trusted publishing via OIDC, no npm token or secret). Tag the release `vX.Y.Z`, matching `plugin/package.json`'s `version`; a mismatch fails the workflow before anything is published. A release marked **pre-release** is published to the `next` dist-tag; a stable release goes to `latest`.
 
+### v0.1.1 — Missing-Session Guard, Task Deletion & Windows Fixes
+
+- **Missing / archived session navigation guard**: clicking task titles, `最近通过`, check/issue source buttons, or bootstrap session chips validates session availability against live `useSessions` and `archivedSessionIds`. Multi-session tasks automatically fall back to another surviving live session; deleted or archived sessions stay on the current view without kicking DSH back to the Home screen, showing an inline notice plus `会话已删除` / `会话已归档` cues.
+- **Inline two-step task deletion**: added `删除任务` → `确认删除` / `取消` (`deleteTask` RPC) so obsolete or orphaned quick-init tasks can be removed cleanly, clearing task-bound checks while detaching linked issues to workspace level.
+- **Windows path & workspace matching**: fixed `workspaceDisplayName` and path normalization to handle `\` separators and Windows drive-letter casing in both client headers and Quick Init workspace matching (`collectWorkspaceSessions`).
+- **Polling & store queue resilience**: transient `Failed to fetch` notices automatically clear once `getState` polling recovers, and `store.mutate` queue cleanup now handles updater rejections cleanly without emitting Node `unhandledRejection`.
+
 ### v0.1.0 — Initial Release Candidate
 
 - **Workspace-isolated project store**: stores each canonical (`realpath`) workspace under `${DSH_HOME}/storages/dsh-slate/projects/` using an in-process serial queue, `O_EXCL` cross-process lock files, stale-lock eviction, atomic writes, and workspace file watchers. Concurrent Web and Headless sessions write safely without overwriting each other.
@@ -24,6 +31,13 @@ Creating a GitHub release publishes `plugin/` (`@lightcheng/dsh-slate`) to npm a
 ### 发布方式
 
 发布 GitHub Release 会通过 `.github/workflows/release.yml` 自动把 [plugin/](plugin/)（包名 `@lightcheng/dsh-slate`）发布到 npm（采用 npm OIDC Trusted Publishing，无需长期 `NPM_TOKEN`）。Release tag 需为 `vX.Y.Z`，且与 `plugin/package.json` 的 `version` 一致；勾选 **pre-release** 会发布到 `next` 标签，正式 Release 发布到 `latest`。
+
+### v0.1.1 — 失效会话跳转保护、任务删除与 Windows 兼容修复
+
+- **失效 / 已归档会话跳转保护**：任务标题、「最近通过」、验收记录/待修问题来源按钮与空态历史会话跳转前均先核对实时会话状态；多会话任务主会话缺失时自动回退至同任务其他活跃会话；目标已删除或归档时阻止误跳回「探索未至之境」空主界面并原地展示引导提示，同时标注 `会话已删除` / `会话已归档`。
+- **行内二次确认删除任务**：新增 `deleteTask` 领域与 RPC 接口，并在任务操作区提供 `删除任务` → `确认删除` / `取消`，清理旧初始化或已删会话残留的任务卡及其绑定检查项，保留关联问题为工作区级跟进项。
+- **Windows 路径与盘符大小写兼容**：修复侧栏顶栏按 `/` 和 `\` 提取项目名称，修复 `collectWorkspaceSessions` 与客户端工作区快照对 Windows 盘符大小写不一致导致的匹配遗漏。
+- **轮询恢复与存储队列异常处理**：后台 `getState` 轮询恢复后自动清除瞬时 `Failed to fetch` 提示，同时修复 `store.mutate` 拒绝路径中 `Promise.prototype.finally` 产生的未捕获拒绝隐患。
 
 ### v0.1.0 — 首个公开发布候选版
 
