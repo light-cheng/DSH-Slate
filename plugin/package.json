@@ -1,6 +1,6 @@
 {
   "name": "@lightcheng/dsh-slate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "description": "DSH-Slate: workspace-isolated, evidence-backed project progress tracker in the DeepSeek Harness right sidebar.",
   "type": "module",

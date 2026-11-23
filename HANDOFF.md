@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-23  
-当前阶段：**正在准备发布修复版 `v0.1.1`（版本号已升至 `0.1.1`，包含失效会话防误跳回主界面、任务行内确认删除、`store.mutate` 异常队列防泄漏、Windows 反斜杠路径头显示与盘符大小写匹配修复）。**
+当前阶段：**正在准备发布修复版 `v0.1.2`（在 `v0.1.1` 已上线的基础上，修复自动证据核验兼容 `dsh-ops` 的 `ops_bash` 工具、`dsh-ops` 失败/后台/拒绝标记识别、以及 Windows 引号与反斜杠命令匹配）。**
 
 ## 从这里开始
 
@@ -30,7 +30,7 @@ npm pack --dry-run
 ## 已核实的 DSH `0.2.2-rc.5` 宿主接口与实测结论
 
 1. **真实会话身份与工作区直接读取**：`exec.agent.id` / `exec.agent.session.header.id` 与 `exec.agent.session.header.cwd` 在 Web 与 Headless 均可靠提供。正式 `project_progress_report` 已彻底移除可伪造的 `sessionId` 参数。
-2. **FR-05 自动证据核对已开启并验证**：DSH `tool/result` 事件的关联 ID 字段为 `message.toolCallId`（以及 `message.source.callId`），而非 `message.callId`。`plugin/src/evidence.js` 配对真实 `bash`/`pwsh`/`shell` 执行结果与退出码：仅匹配到 `exitCode === 0` 才标记 `verifiedBy: 'evidence'`，真实失败覆盖为 `failed`，缺失真实运行降级为 `todo`；同时长输出受控落盘为 `outputs/<hash>/chk-<hash>.txt`。
+2. **FR-05 自动证据核对已开启并验证**：DSH `tool/result` 事件的关联 ID 字段为 `message.toolCallId`（以及 `message.source.callId`），而非 `message.callId`。`plugin/src/evidence.js` 兼容宿主内置 `bash`/`pwsh`/`shell`/`powershell`/`cmd` 与 `dsh-ops` 的 `ops_bash`/`ops_pwsh`/`ops_shell`（含 `script_path`、`workdir`、`[cancelled]` / `[signal: ...]` / `[error: ...]` / `[POLICY_DENIED: ...]` / 结构化失败标记、后台升级任务及 Windows 引号/反斜杠归一化匹配）：仅匹配到 `exitCode === 0` 且无掩码或失败标记时才标记 `verifiedBy: 'evidence'`，真实失败覆盖为 `failed`，缺失真实运行或运行中降级为 `todo`；长输出受控落盘为 `outputs/<hash>/chk-<hash>.txt`。
 3. **认证通信通道实测边界**：`0.2.2-rc.5` 中 `ctx.connection.rpc.handle` 会因 `dsh-client-connection` 内部读取 `this.ctx.webServer` 抛出 `cannot get property "webServer" without inject`；因此正式实现采用与宿主内置插件一致的 `ctx.connection.fetch.register('/api/dsh-slate/rpc')` + `ctx.connection.fetch.register('/api/dsh-slate/events')`，复用 DSH `/api` 入口 `BrowserAuth`、Host/Origin 校验与 `owner` Peer 鉴权（实测未认证请求返回 HTTP `401`）。
 4. **工作区隔离与跨进程锁**：状态按 `realpath` 规范化工作区路径哈希隔离在 `${DSH_HOME}/storages/dsh-slate/`，使用进程内串行队列 + `O_EXCL` 跨进程锁文件 + 原子写保护，并在 6 进程并发写入测试中 0 丢更新。
 5. **栏宽保护与跨会话保持**：`0.2.2-rc.5` 的 `LayoutController` 未提供 `requestRightbarWidth`，回退 `panels.setRightbar(420)` 仅在首次打开时执行一次；实测初始栏宽 `420px`，拖动至 `514px` 后跨标签、跨会话导航仍保留 `514px`。通过 `ctx.sidebarRight.openTabIn` 与 `mounted` 监听，点击任务跳转目标会话后项目页自动保持打开。
@@ -38,7 +38,12 @@ npm pack --dry-run
 
 ## 本轮已验证项
 
-- **Windows 实测问题修复（未发布本地工作区修改）**：
+- **`v0.1.2` `ops_bash` 与 Windows 证据核对修复（准备发布）**：
+  - `plugin/src/evidence.js`：将 `ops_bash` / `ops_pwsh` / `ops_shell` / `powershell` / `cmd` 与 `script_path` 纳入 `extractShellExecutions`；严格识别 `[cancelled]`、`[signal: ...]`、`[error: ...]`、结构化 `[CODE; effects: ...; retry: ...]`、`[POLICY_DENIED: ...]`、沙箱拒绝及 `dsh-ops` 后台升级标记（`[still running after ...ms; moved to background job ...]`）；在 `findMatchingExecution` 新增引号与斜杠（`\` / `/`）归一化兜底匹配，修复装有 `dsh-ops` 时构建与 Windows `icacls` 检查误降级为「未检查」的问题。
+  - `plugin/test/domain.test.mjs`：新增 `ops_bash` 成功/失败/取消/策略拒绝/后台升级/`script_path` 与 Windows `icacls` 跨引号反斜杠匹配回归测试。
+  - `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`17/17` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.2.tgz`（`34` 个文件，`2.3 MB`）。
+- **`v0.1.1` 发布链路与 Windows 实测问题修复（已发布至 npm `latest`）**：
+  - GitHub Release `v0.1.1`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.1>；`release` 工作流（<https://github.com/light-cheng/DSH-Slate/actions/runs/45099888378>，Sigstore Provenance logIndex `4049913122`）与三平台 `ci`（<https://github.com/light-cheng/DSH-Slate/actions/runs/45099888357>）均已绿，`npm view` 已确认 `@lightcheng/dsh-slate@0.1.1` 在 `latest` 生效。
   - `plugin/src/client.js` & `plugin/src/styles.css`：
     - 会话跳转守卫（`resolveSessionTarget` / `safeOpenSession`）：任务标题、最近通过、检查/问题来源按钮及历史会话跳转均先核对实时 `useSessions((s) => s?.byId)` 与 `archivedSessionIds`，若多会话任务主会话缺失但同任务仍有其他未归档会话则回退跳转；若均已删除或归档则禁止调用 `ctx.uiWorkspace.openSession`（避免主区域误跳回“探索未至之境”空页），就地展示 `.sl-notice.is-warn` 提示，并在任务元信息与详情按钮明确标注 `会话已删除` / `会话已归档`。`openSession` 外层同时加 `try/catch` 兜底；轮询 `getState` 恢复正常时自动清除瞬时 `Failed to fetch` 错误横幅。
     - Windows 工作区名称与路径兼容：`workspaceDisplayName` 按 `/` 与 `\` 双分隔符提取末段目录名（修复 Windows 标题栏显示 `C:\Users\...\C...`）；`liveSessionSnapshot` 路径归一化统一斜杠并规范 Windows 盘符大小写。
@@ -46,7 +51,7 @@ npm pack --dry-run
   - `plugin/src/domain.js` & `plugin/src/rpc.js`：新增 `deleteTask` 领域函数与 `deleteTask` RPC 端点（移除目标任务与绑定检查，将关联问题 `taskId` 置为 `null` 保留跟进，记录动态并重算统计、优先处理与最近通过）。
   - `plugin/src/bootstrap.js`：增加 `pathsEqual`（Windows 盘符大小写不敏感比较）并优先通过 `excludeSessionId` 在 `workspaceRegistry` 中反查所属工作区。
   - `plugin/src/store.js`：修复 `enqueueInProcess` 中 `next.finally(...)` 在 `updater` 抛错时产生未捕获拒绝（`unhandledRejection`）的潜在隐患，改为 `.then(cleanup, cleanup)`。
-- `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`16/16` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.1.tgz`（`34` 个文件，`2.3 MB`）。
+- `npm run verify && npm pack --dry-run`（`v0.1.1` 发布基线运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`16/16` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.1.tgz`（`34` 个文件，`2.3 MB`）。
 - 隔离 DSH Web + Playwright 失效会话实测（最新运行，使用临时 `DSH_HOME` 并在测试后彻底清理 `.tmp/`）：
   - 真实活跃会话（`#6ff57aa9`）与已删会话任务（`#35cbd432`）同屏渲染，任务卡准确标记 `· 会话已删除`；
   - 点击已删会话任务标题不再跳回主页或报错，页面保留在活跃会话并展示黄色单色提示栏「会话 #35cbd432 已删除或不存在，无法跳转；如不再需要，可点击该任务下的「删除任务」移除。」，浏览器控制台与页面错误 `0`；
@@ -70,6 +75,6 @@ npm pack --dry-run
 
 ## 下一步（如后续迭代）
 
-- **待用户确认发布 `v0.1.1`**：确认后将工作区修复升版提交并打 GitHub Release `v0.1.1`（通过 `.github/workflows/release.yml` 自动触发 npm OIDC 发布 `@lightcheng/dsh-slate@0.1.1`），随后 macOS 与 Windows 端在 DSH 更新安装新版本即可验证实机效果。
+- **正在执行 `v0.1.2` 发布**：完成校验后提交并发布 GitHub Release `v0.1.2` 至 npm `@lightcheng/dsh-slate@0.1.2`。
 - **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
 - **插件市场跟进**：PR #17699 满 24 小时（约 `2026-11-23 12:25`）后确认 `Submission gate` 转绿等待维护者合入。

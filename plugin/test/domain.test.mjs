@@ -580,3 +580,232 @@ test('deleteTask removes task and attached checks, detaches issues, recalculates
   assert.equal(view.priorityItem?.id, 'iss-a-open');
   assert.match(view.activity[0], /#deadbeef：你删除了任务「待删除任务 A」/);
 });
+
+test('FR-05: ops_bash, script_path, dsh-ops failure markers, background promotion, and Windows command matching', async () => {
+  const session = makeSession([
+    // 1. Clean ops_bash build success with [cwd: ...] prefix and no [exit code: N] marker
+    {
+      type: 'tool/call',
+      seq: 0,
+      data: {
+        callId: 'ops-1',
+        name: 'ops_bash',
+        arguments: JSON.stringify({ command: 'npm run dist', workdir: 'C:\\repo\\blackhole' }),
+      },
+    },
+    {
+      type: 'tool/result',
+      seq: 1,
+      data: {
+        message: {
+          toolCallId: 'ops-1',
+          source: { kind: 'tool', callId: 'ops-1' },
+          isError: false,
+          content: [{ type: 'text', text: '[cwd: resolvedFrom="C:\\repo\\blackhole"; cwdSource="workdir"]\nintegrity labels are Medium under C:\\repo\\blackhole\\dist' }],
+        },
+      },
+    },
+    // 2. ops_bash Windows icacls with double quotes & single backslashes, output includes [exit code: 0]
+    {
+      type: 'tool/call',
+      seq: 2,
+      data: {
+        callId: 'ops-2',
+        name: 'ops_bash',
+        arguments: JSON.stringify({ command: 'icacls "C:\\Program Files\\Black Hole\\Black Hole.exe"' }),
+      },
+    },
+    {
+      type: 'tool/result',
+      seq: 3,
+      data: {
+        message: {
+          toolCallId: 'ops-2',
+          source: { kind: 'tool', callId: 'ops-2' },
+          isError: false,
+          content: [{ type: 'text', text: 'Mandatory Label\\Medium Mandatory Level\n[exit code: 0]' }],
+        },
+      },
+    },
+    // 3. ops_bash via script_path
+    {
+      type: 'tool/call',
+      seq: 4,
+      data: {
+        callId: 'ops-3',
+        name: 'ops_bash',
+        arguments: JSON.stringify({ script_path: 'scripts/check.sh' }),
+      },
+    },
+    {
+      type: 'tool/result',
+      seq: 5,
+      data: {
+        message: {
+          toolCallId: 'ops-3',
+          source: { kind: 'tool', callId: 'ops-3' },
+          isError: false,
+          content: [{ type: 'text', text: 'all checks ok' }],
+        },
+      },
+    },
+    // 4. dsh-ops non-zero exit with structured failure line
+    {
+      type: 'tool/call',
+      seq: 6,
+      data: { callId: 'ops-fail-exit', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run fail-exit' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 7,
+      data: {
+        message: {
+          toolCallId: 'ops-fail-exit',
+          isError: false,
+          content: [{ type: 'text', text: '[EXIT_CODE; effects: unknown; retry: after-input-change] Fix command.\n[exit code: 1]' }],
+        },
+      },
+    },
+    // 5. ops_bash [cancelled]
+    {
+      type: 'tool/call',
+      seq: 8,
+      data: { callId: 'ops-cancel', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run cancel-cmd' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 9,
+      data: {
+        message: { toolCallId: 'ops-cancel', isError: false, content: [{ type: 'text', text: '[cancelled]' }] },
+      },
+    },
+    // 6. ops_bash [error: spawn EPERM]
+    {
+      type: 'tool/call',
+      seq: 10,
+      data: { callId: 'ops-err', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run eperm-cmd' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 11,
+      data: {
+        message: { toolCallId: 'ops-err', isError: false, content: [{ type: 'text', text: '[error: spawn EPERM]' }] },
+      },
+    },
+    // 7. ops_bash [signal: SIGTERM]
+    {
+      type: 'tool/call',
+      seq: 12,
+      data: { callId: 'ops-sig', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run sig-cmd' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 13,
+      data: {
+        message: { toolCallId: 'ops-sig', isError: false, content: [{ type: 'text', text: '[signal: SIGTERM]' }] },
+      },
+    },
+    // 8. dsh-ops [POLICY_DENIED; effects: none; retry: never]
+    {
+      type: 'tool/call',
+      seq: 14,
+      data: { callId: 'ops-policy', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run policy-cmd' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 15,
+      data: {
+        message: {
+          toolCallId: 'ops-policy',
+          isError: false,
+          content: [{ type: 'text', text: '[POLICY_DENIED; effects: none; retry: never] Ask user to switch permission.' }],
+        },
+      },
+    },
+    // 9. dsh-ops [sandbox: file access denied under workspace-write mode]
+    {
+      type: 'tool/call',
+      seq: 16,
+      data: { callId: 'ops-sbx', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run sbx-cmd' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 17,
+      data: {
+        message: {
+          toolCallId: 'ops-sbx',
+          isError: false,
+          content: [{ type: 'text', text: '[sandbox: file access denied under workspace-write mode]' }],
+        },
+      },
+    },
+    // 10. dsh-ops promoted background job
+    {
+      type: 'tool/call',
+      seq: 18,
+      data: { callId: 'ops-bg', name: 'ops_bash', arguments: JSON.stringify({ command: 'npm run long-build' }) },
+    },
+    {
+      type: 'tool/result',
+      seq: 19,
+      data: {
+        message: {
+          toolCallId: 'ops-bg',
+          isError: false,
+          content: [{ type: 'text', text: 'building...\n[still running after 120000ms; moved to background job j1 ("build")]' }],
+        },
+      },
+    },
+  ]);
+
+  const execs = extractShellExecutions(session);
+  assert.equal(execs.length, 10);
+  assert.equal(execs[0].status, 'passed');
+  assert.equal(execs[0].exitCode, 0);
+  assert.equal(execs[0].cwd, 'C:\\repo\\blackhole');
+  assert.equal(execs[1].status, 'passed');
+  assert.equal(execs[2].command, 'bash scripts/check.sh');
+  assert.equal(execs[2].status, 'passed');
+  assert.equal(execs[3].status, 'failed');
+  assert.equal(execs[3].exitCode, 1);
+  assert.equal(execs[4].status, 'failed');
+  assert.equal(execs[4].exitCode, null);
+  assert.equal(execs[5].status, 'failed');
+  assert.equal(execs[6].status, 'failed');
+  assert.equal(execs[7].status, 'failed');
+  assert.equal(execs[8].status, 'failed');
+  assert.equal(execs[9].status, 'running');
+  assert.equal(execs[9].exitCode, null);
+
+  const verified = await verifyReportedChecks(
+    [
+      { title: '打包构建', state: 'passed', command: 'npm run dist', note: '生成安装包' },
+      { title: 'exe 完整性级别', state: 'passed', command: "icacls 'C:/Program Files/Black Hole/Black Hole.exe'", note: 'Medium' },
+      { title: '脚本检查', state: 'passed', command: 'scripts/check.sh', note: 'ok' },
+      { title: '未运行命令', state: 'passed', command: 'npm run never-ran', note: '口头' },
+      { title: '非零退出误报通过', state: 'passed', command: 'npm run fail-exit', note: 'claimed' },
+      { title: '取消命令误报通过', state: 'passed', command: 'npm run cancel-cmd', note: 'claimed' },
+      { title: 'spawn EPERM 误报通过', state: 'passed', command: 'npm run eperm-cmd', note: 'claimed' },
+      { title: '策略拒绝误报通过', state: 'passed', command: 'npm run policy-cmd', note: 'claimed' },
+      { title: '后台任务未完成误报通过', state: 'passed', command: 'npm run long-build', note: 'claimed' },
+    ],
+    execs,
+    { now: '2026-11-23T03:00:00.000Z' }
+  );
+
+  assert.equal(verified.checks[0].state, 'passed');
+  assert.equal(verified.checks[0].verifiedBy, 'evidence');
+  assert.equal(verified.checks[1].state, 'passed');
+  assert.equal(verified.checks[1].verifiedBy, 'evidence');
+  assert.equal(verified.checks[2].state, 'passed');
+  assert.equal(verified.checks[2].verifiedBy, 'evidence');
+  assert.equal(verified.checks[3].state, 'todo');
+  assert.equal(verified.checks[4].state, 'failed');
+  assert.equal(verified.checks[4].exitCode, 1);
+  assert.equal(verified.checks[5].state, 'failed');
+  assert.equal(verified.checks[6].state, 'failed');
+  assert.equal(verified.checks[7].state, 'failed');
+  assert.equal(verified.checks[8].state, 'todo');
+  assert.equal(verified.downgradedCount, 2);
+  assert.equal(verified.mismatchedCount, 4);
+});

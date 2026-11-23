@@ -6,6 +6,11 @@ See the repository root [RELEASE.md](https://github.com/light-cheng/DSH-Slate/bl
 
 Creating a GitHub release in `light-cheng/DSH-Slate` publishes `plugin/` (`@lightcheng/dsh-slate`) to npm automatically via `.github/workflows/release.yml` (npm OIDC trusted publishing, no npm token). Tag the release `vX.Y.Z`, matching `version` in `package.json`.
 
+## v0.1.2 — `ops_bash` Evidence Verification & Windows Command Matching
+
+- **Verify `dsh-ops` shell executions (`ops_bash`)**: extended `evidence.js` to match `ops_bash` (`ops_pwsh`, `ops_shell`, `powershell`, `cmd`) and `script_path` invocations rather than dropping `dsh-ops` tool calls as unexecuted.
+- **Strict `dsh-ops` failure/background markers & Windows matching**: detect `[cancelled]`, `[signal: ...]`, `[error: ...]`, `[CODE; effects: ...; retry: ...]`, `[POLICY_DENIED: ...]`, and promoted background jobs (`[still running after ...ms; moved to background job ...]`), plus normalized quote/slash command matching for Windows paths (`icacls`).
+
 ## v0.1.1 — Missing-Session Guard, Task Deletion & Windows Fixes
 
 - **Missing / archived session navigation guard**: checks live `useSessions` and `archivedSessionIds` before opening sessions, falls back to another surviving live session on multi-session tasks, prevents bouncing back to the DSH Home screen when a session is gone, and marks unavailable entries inline (`会话已删除` / `会话已归档`).

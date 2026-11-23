@@ -8,6 +8,12 @@ English is the default; the Chinese version follows below.
 
 Creating a GitHub release publishes `plugin/` (`@lightcheng/dsh-slate`) to npm automatically (`.github/workflows/release.yml`, npm trusted publishing via OIDC, no npm token or secret). Tag the release `vX.Y.Z`, matching `plugin/package.json`'s `version`; a mismatch fails the workflow before anything is published. A release marked **pre-release** is published to the `next` dist-tag; a stable release goes to `latest`.
 
+### v0.1.2 — `ops_bash` Evidence Verification & Windows Command Matching
+
+- **Support `dsh-ops` shell tools in FR-05 verifier**: `extractShellExecutions` now inspects `ops_bash` (`ops_pwsh`, `ops_shell`, `powershell`, `cmd`) in addition to built-in `bash`/`pwsh`/`shell`, including `script_path` invocations and `workdir` metadata.
+- **Strict `dsh-ops` failure & background detection**: `parseShellOutputStatus` recognizes `[cancelled]`, `[signal: ...]`, `[error: ...]`, structured `[CODE; effects: ...; retry: ...]` markers, `[POLICY_DENIED: ...]` / sandbox refusal markers, and `dsh-ops` promoted background jobs (`[still running after ...ms; moved to background job ...]`) so aborted/denied/running commands are never counted as passed.
+- **Windows path/quote command matching**: `findMatchingExecution` adds normalized slash/quote fallback matching (`\` / `\\` / `/` and `"` / `'`) so Windows commands like `icacls "C:\..."` match reported checks reliably.
+
 ### v0.1.1 — Missing-Session Guard, Task Deletion & Windows Fixes
 
 - **Missing / archived session navigation guard**: clicking task titles, `最近通过`, check/issue source buttons, or bootstrap session chips validates session availability against live `useSessions` and `archivedSessionIds`. Multi-session tasks automatically fall back to another surviving live session; deleted or archived sessions stay on the current view without kicking DSH back to the Home screen, showing an inline notice plus `会话已删除` / `会话已归档` cues.
@@ -31,6 +37,12 @@ Creating a GitHub release publishes `plugin/` (`@lightcheng/dsh-slate`) to npm a
 ### 发布方式
 
 发布 GitHub Release 会通过 `.github/workflows/release.yml` 自动把 [plugin/](plugin/)（包名 `@lightcheng/dsh-slate`）发布到 npm（采用 npm OIDC Trusted Publishing，无需长期 `NPM_TOKEN`）。Release tag 需为 `vX.Y.Z`，且与 `plugin/package.json` 的 `version` 一致；勾选 **pre-release** 会发布到 `next` 标签，正式 Release 发布到 `latest`。
+
+### v0.1.2 — 兼容 `ops_bash` 证据核验与 Windows 命令匹配
+
+- **自动证据核验支持 `dsh-ops` 工具链**：`extractShellExecutions` 在原有内置 `bash`/`pwsh`/`shell` 基础上纳入 `ops_bash`（及 `ops_pwsh`/`ops_shell`/`powershell`/`cmd`），并支持读取 `script_path` 与 `workdir`。
+- **补全 `dsh-ops` 失败与后台标记识别**：`parseShellOutputStatus` 识别 `[cancelled]`、`[signal: ...]`、`[error: ...]`、结构化 `[CODE; effects: ...; retry: ...]`、`[POLICY_DENIED: ...]` / 沙箱拒绝标记及后台升级标记（`[still running after ...ms; moved to background job ...]`），确保中断、报错或策略拒绝绝不会被误判为通过。
+- **Windows 引号与路径斜杠兼容匹配**：`findMatchingExecution` 增加引号/斜杠归一化兜底匹配，解决类似带双引号或反斜杠的 Windows 命令（如 `icacls`）因汇报口径差异导致的漏配问题。
 
 ### v0.1.1 — 失效会话跳转保护、任务删除与 Windows 兼容修复
 

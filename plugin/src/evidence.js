@@ -5,7 +5,16 @@
 
 import { createHash } from 'node:crypto';
 
-const SHELL_TOOL_NAMES = new Set(['bash', 'pwsh', 'shell']);
+const SHELL_TOOL_NAMES = new Set([
+  'bash',
+  'pwsh',
+  'shell',
+  'powershell',
+  'cmd',
+  'ops_bash',
+  'ops_pwsh',
+  'ops_shell',
+]);
 const MAX_SUMMARY_CHARS = 360;
 
 /**
@@ -74,29 +83,34 @@ function hasMaskedExitCode(command) {
  * @returns {{ status: 'passed' | 'failed' | 'running' | 'masked', exitCode: number | null }}
  */
 export function parseShellOutputStatus(text, isError, command = '') {
+  const exitMatch = text.match(/\[exit code:\s*(-?\d+)\]/m);
+  const parsedExitCode = exitMatch ? Number(exitMatch[1]) : null;
   if (isError) {
-    const exitMatch = text.match(/\[exit code:\s*(-?\d+)\]/m);
-    return { status: 'failed', exitCode: exitMatch ? Number(exitMatch[1]) : null };
+    return { status: 'failed', exitCode: parsedExitCode };
   }
-  if (/^started background job /m.test(text) || /\[still running after \d+ms\]/m.test(text)) {
+  if (/^started background job /m.test(text) || /\[still running after \d+ms\b[^\]]*\]/m.test(text)) {
     return { status: 'running', exitCode: null };
   }
-  if (/\[timed out after \d+ms\]/m.test(text)) {
-    return { status: 'failed', exitCode: null };
+  const hasFailureMarker =
+    /\[timed out after \d+ms\]/m.test(text) ||
+    /\[(?:killed by )?signal:\s*[^\]]+\]/m.test(text) ||
+    /\[stopped:\s*[^\]]+\]/m.test(text) ||
+    /\[cancelled\]/m.test(text) ||
+    /\[error:\s*[^\]]+\]/m.test(text) ||
+    /\[[A-Z][A-Z0-9_]+;\s*effects:\s*(?:none|unknown);\s*retry:\s*[^\]]+\]/m.test(text) ||
+    /\[(?:POLICY_DENIED|EXECUTION_RESTRICTED|AUTHORITY_CHANGED|INVALID_BASH_ARGUMENT|STATUS_DLL_INIT_FAILED|PERMISSION_DENIED):[^\]]*\]/m.test(text) ||
+    /\[(?:workspace-write|read-only|sandbox)[^\]]*denied/im.test(text);
+  if (hasFailureMarker) {
+    return {
+      status: 'failed',
+      exitCode: parsedExitCode !== null && parsedExitCode !== 0 ? parsedExitCode : null,
+    };
   }
-  if (/\[killed by signal: [^\]]+\]/m.test(text) || /\[stopped: [^\]]+\]/m.test(text)) {
-    return { status: 'failed', exitCode: null };
-  }
-  if (/\[(?:workspace-write|read-only|sandbox)[^\]]*denied/im.test(text)) {
-    return { status: 'failed', exitCode: null };
-  }
-  const exitMatch = text.match(/\[exit code:\s*(-?\d+)\]/m);
-  if (exitMatch) {
-    const code = Number(exitMatch[1]);
-    if (code === 0 && hasMaskedExitCode(command)) {
+  if (parsedExitCode !== null) {
+    if (parsedExitCode === 0 && hasMaskedExitCode(command)) {
       return { status: 'masked', exitCode: null };
     }
-    return { status: code === 0 ? 'passed' : 'failed', exitCode: code };
+    return { status: parsedExitCode === 0 ? 'passed' : 'failed', exitCode: parsedExitCode };
   }
   if (hasMaskedExitCode(command)) {
     return { status: 'masked', exitCode: null };
@@ -144,13 +158,17 @@ export function extractShellExecutions(session) {
   for (const event of events) {
     if (event.type === 'tool/call' && event.data && SHELL_TOOL_NAMES.has(event.data.name)) {
       const args = parseArgs(event.data.arguments);
-      const command = typeof args.command === 'string' ? args.command.trim() : '';
+      const rawCommand = typeof args.command === 'string' ? args.command.trim() : '';
+      const rawScriptPath = typeof args.script_path === 'string' ? args.script_path.trim() : '';
+      const command = rawCommand || (rawScriptPath ? `bash ${rawScriptPath}` : '');
+      const workdir = typeof args.workdir === 'string' && args.workdir.trim() ? args.workdir.trim() : undefined;
       if (event.data.callId && command) {
         pendingCalls.set(event.data.callId, {
           callId: event.data.callId,
           seq: event.seq ?? executions.length,
           toolName: event.data.name,
           command,
+          workdir,
         });
       }
       continue;
@@ -174,7 +192,7 @@ export function extractShellExecutions(session) {
         seq: event.seq ?? call.seq,
         toolName: call.toolName,
         command: call.command,
-        cwd: typeof event.data.meta?.cwd === 'string' ? event.data.meta.cwd : undefined,
+        cwd: typeof event.data.meta?.cwd === 'string' ? event.data.meta.cwd : call.workdir,
         status: parsed.status,
         exitCode: parsed.exitCode,
         outputText,
@@ -190,8 +208,18 @@ function normalizeCommand(cmd) {
   return String(cmd || '').trim().replace(/\s+/g, ' ');
 }
 
+function normalizeCommandLoose(cmd) {
+  return normalizeCommand(cmd)
+    .replace(/\\+/g, '/')
+    .replace(/['"`]/g, '')
+    .toLowerCase();
+}
+
 function extractTestPathTokens(cmd) {
-  const matches = normalizeCommand(cmd).match(/[A-Za-z0-9_./-]+\.(?:test|spec)\.[A-Za-z0-9]+/g);
+  const matches = normalizeCommand(cmd)
+    .replace(/\\+/g, '/')
+    .toLowerCase()
+    .match(/[a-z0-9_./-]+\.(?:test|spec)\.[a-z0-9]+/g);
   return matches ? [...new Set(matches)] : [];
 }
 
@@ -209,13 +237,24 @@ function findMatchingExecution(command, executions) {
     return completed.at(-1) || executions.at(-1) || null;
   }
 
-  const tokens = extractTestPathTokens(norm);
   for (let i = executions.length - 1; i >= 0; i--) {
     const execNorm = normalizeCommand(executions[i].command);
     if (execNorm === norm || execNorm.includes(norm) || norm.includes(execNorm)) {
       return executions[i];
     }
-    if (tokens.length > 0 && tokens.every((tok) => execNorm.includes(tok))) {
+  }
+
+  const normLoose = normalizeCommandLoose(norm);
+  const tokens = extractTestPathTokens(norm);
+  for (let i = executions.length - 1; i >= 0; i--) {
+    const execLoose = normalizeCommandLoose(executions[i].command);
+    if (
+      normLoose.length >= 4 &&
+      (execLoose === normLoose || execLoose.includes(normLoose) || normLoose.includes(execLoose))
+    ) {
+      return executions[i];
+    }
+    if (tokens.length > 0 && tokens.every((tok) => execLoose.includes(tok))) {
       return executions[i];
     }
   }
