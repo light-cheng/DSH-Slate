@@ -1,7 +1,7 @@
 # DSH-Slate · 实施交接
 
 更新时间：2026-11-23  
-当前阶段：**正在准备发布修复版 `v0.1.2`（在 `v0.1.1` 已上线的基础上，修复自动证据核验兼容 `dsh-ops` 的 `ops_bash` 工具、`dsh-ops` 失败/后台/拒绝标记识别、以及 Windows 引号与反斜杠命令匹配）。**
+当前阶段：**`v0.1.2` 已正式发布上线——npm `@lightcheng/dsh-slate@0.1.2`（`latest`，OIDC Provenance）与 GitHub Release `v0.1.2` 均已生效，修复 `dsh-ops`（`ops_bash`）自动证据核验与 Windows 命令归一化匹配；`awesome-dsh-plugin` PR #17699 等待满 24 小时门禁放行。**
 
 ## 从这里开始
 
@@ -38,7 +38,8 @@ npm pack --dry-run
 
 ## 本轮已验证项
 
-- **`v0.1.2` `ops_bash` 与 Windows 证据核对修复（准备发布）**：
+- **`v0.1.2` `ops_bash` 与 Windows 证据核对修复（已发布至 npm `latest`）**：
+  - GitHub Release `v0.1.2`：<https://github.com/light-cheng/DSH-Slate/releases/tag/v0.1.2>；`release` 工作流（<https://github.com/light-cheng/DSH-Slate/actions/runs/45104353063>，Sigstore Provenance logIndex `4049991176`）与三平台 `ci`（<https://github.com/light-cheng/DSH-Slate/actions/runs/45104352187>）均已绿，`npm view` 已确认 `@lightcheng/dsh-slate@0.1.2` 在 `latest` 生效。
   - `plugin/src/evidence.js`：将 `ops_bash` / `ops_pwsh` / `ops_shell` / `powershell` / `cmd` 与 `script_path` 纳入 `extractShellExecutions`；严格识别 `[cancelled]`、`[signal: ...]`、`[error: ...]`、结构化 `[CODE; effects: ...; retry: ...]`、`[POLICY_DENIED: ...]`、沙箱拒绝及 `dsh-ops` 后台升级标记（`[still running after ...ms; moved to background job ...]`）；在 `findMatchingExecution` 新增引号与斜杠（`\` / `/`）归一化兜底匹配，修复装有 `dsh-ops` 时构建与 Windows `icacls` 检查误降级为「未检查」的问题。
   - `plugin/test/domain.test.mjs`：新增 `ops_bash` 成功/失败/取消/策略拒绝/后台升级/`script_path` 与 Windows `icacls` 跨引号反斜杠匹配回归测试。
   - `npm run verify && npm pack --dry-run`（最新运行）：构建 `lib/client.js`（`71194` bytes），语法、单色检查、`17/17` 单元与多进程/拒绝恢复测试全通过；打包校验产出 `lightcheng-dsh-slate-0.1.2.tgz`（`34` 个文件，`2.3 MB`）。
@@ -75,6 +76,6 @@ npm pack --dry-run
 
 ## 下一步（如后续迭代）
 
-- **正在执行 `v0.1.2` 发布**：完成校验后提交并发布 GitHub Release `v0.1.2` 至 npm `@lightcheng/dsh-slate@0.1.2`。
+- **用户端更新验证**：Windows 与 macOS 桌面端在 DSH 更新至 `@lightcheng/dsh-slate@0.1.2` 后，新发起或重跑带 `ops_bash` 执行证据的检查即可由核验器自动识别并标记「已通过」。
 - **可选清理**：在 72 小时内执行 `npm unpublish @lightcheng/dsh-slate@0.0.1-init.0`（或 `npm deprecate`）移除或标弃早期 OIDC 占位版本。
 - **插件市场跟进**：PR #17699 满 24 小时（约 `2026-11-23 12:25`）后确认 `Submission gate` 转绿等待维护者合入。
