@@ -103,7 +103,7 @@ export function formatSlatePromptSection(project) {
   if (openIssues.length > 0) {
     lines.push('- 待修问题：');
     for (const issue of openIssues.slice(0, 5)) {
-      lines.push(`  - [issueId: ${issue.id}] [${issue.severity}] ${issue.title}`);
+      lines.push(`  - [issueId: ${issue.id}] ${issue.title}（${issue.severity}）`);
     }
     lines.push('  - 若本轮已解决上述问题，请在 `issues` 中传入对应 `id` 并标为 `resolved`。');
   }

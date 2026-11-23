@@ -144,11 +144,18 @@ function stableCheckId(taskId, sessionId, rawCheck, index) {
   return `chk-${shortHash(`${taskId}::${sessionId}::${normalizeText(rawCheck.title)}::${index}`, 10)}`;
 }
 
+function sanitizeIssueTitle(rawTitle) {
+  return String(rawTitle || '')
+    .trim()
+    .replace(/^(?:(?:\[\s*P[0-2]\s*\]|【\s*P[0-2]\s*】|P[0-2]\s*[:：\-·])\s*)+/i, '')
+    .trim();
+}
+
 function stableIssueId(taskId, sessionId, rawIssue, index) {
   if (typeof rawIssue.id === 'string' && rawIssue.id.trim()) {
     return rawIssue.id.trim();
   }
-  const titleKey = normalizeText(rawIssue.title) || `issue-${index + 1}`;
+  const titleKey = normalizeText(sanitizeIssueTitle(rawIssue.title)) || `issue-${index + 1}`;
   return `iss-${shortHash(`${taskId}::${sessionId}::${titleKey}`, 10)}`;
 }
 
@@ -356,11 +363,12 @@ export function applySessionReport(current, input, context) {
       const issueId = stableIssueId(taskId, sessionId, rawIssue, index);
       incomingIds.add(issueId);
       const status = rawIssue.status === 'resolved' ? 'resolved' : 'open';
+      const cleanTitle = sanitizeIssueTitle(rawIssue.title);
       const existingIssue = project.issues.find((item) => item.id === issueId);
       if (existingIssue) {
         existingIssue.taskId = taskId;
         existingIssue.severity = normalizePriority(rawIssue.severity, existingIssue.severity);
-        existingIssue.title = String(rawIssue.title || existingIssue.title).trim();
+        existingIssue.title = cleanTitle || existingIssue.title;
         existingIssue.detail = String(rawIssue.detail ?? existingIssue.detail).trim();
         existingIssue.status = status;
         existingIssue.sourceSessionId = sessionId;
@@ -371,7 +379,7 @@ export function applySessionReport(current, input, context) {
           projectId: project.id,
           taskId,
           severity: normalizePriority(rawIssue.severity, 'P1'),
-          title: String(rawIssue.title || '未命名问题').trim(),
+          title: cleanTitle || '未命名问题',
           detail: String(rawIssue.detail || '').trim(),
           status,
           sourceSessionId: sessionId,
@@ -596,7 +604,7 @@ function selectPriorityFocus(project, tasksById) {
       kind: 'issue',
       id: issue.id,
       severity: issue.severity,
-      title: issue.title,
+      title: sanitizeIssueTitle(issue.title) || issue.title,
       detail: issue.detail,
       taskId: issue.taskId || null,
       taskTitle: issue.taskId ? (tasksById.get(issue.taskId)?.title || '') : '',
@@ -681,6 +689,7 @@ export function buildProjectView(project) {
 
   const enrichedIssues = project.issues.map((issue) => ({
     ...issue,
+    title: sanitizeIssueTitle(issue.title) || issue.title,
     sourceLabel: sessionLabel(issue.sourceSessionId),
     taskTitle: issue.taskId ? (tasksById.get(issue.taskId)?.title || '') : '',
   }));

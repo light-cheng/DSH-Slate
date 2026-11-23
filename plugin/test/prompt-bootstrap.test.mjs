@@ -172,7 +172,7 @@ test('formatSlatePromptSection & registerPromptGuidance inject active state and 
     assert.match(populatedText, /\[taskId: [^\]]+\] 构建发布流水线.*验收未通过/);
     assert.match(populatedText, /未通过检查.*\[taskId: [^\]]+\] \[checkId: chk-fail\] Cask URL 校验/s);
     assert.match(populatedText, /\[checkId: chk-smoke\] Windows 真机冒烟/);
-    assert.match(populatedText, /\[issueId: [^\]]+\] \[P1\] 签名证书缺失/);
+    assert.match(populatedText, /\[issueId: [^\]]+\] 签名证书缺失（P1）/);
 
     // Explicit user verification suppresses chk-fail from active 未通过检查 guidance
     await store.mutate(ws, (current, helpers) => {

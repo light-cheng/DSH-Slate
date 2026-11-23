@@ -809,3 +809,71 @@ test('FR-05: ops_bash, script_path, dsh-ops failure markers, background promotio
   assert.equal(verified.downgradedCount, 2);
   assert.equal(verified.mismatchedCount, 4);
 });
+
+test('FR-06: sanitizeIssueTitle strips duplicate severity prefixes without mutating P2P titles', () => {
+  let project = createEmptyProject('/tmp/proj-issue-title', '2026-11-23T03:30:00.000Z');
+
+  // Initial unprefixed report creates a stable issue ID
+  ({ project } = applySessionReport(
+    project,
+    {
+      task: '打包产物核查',
+      workStatus: 'in_progress',
+      progressEstimate: 50,
+      nextDeliverable: '排查旧包问题',
+      summary: '登记问题',
+      issues: [
+        { severity: 'P2', title: 'dist/ 打包产物仍是旧的 Ctrl+Q 行为', detail: '需要重新构建' },
+        { severity: 'P1', title: 'P2P 同步连接超时', detail: '不应截断 P2P' },
+      ],
+    },
+    { sessionId: 'session-issue-1', workspacePath: '/tmp/proj-issue-title', now: '2026-11-23T03:31:00.000Z' }
+  ));
+
+  const taskId = project.tasks[0].id;
+  const originalIssueId = project.issues[0].id;
+
+  // Second report repeats [P2] prefix -> hashes to same ID and strips redundant [P2]
+  ({ project } = applySessionReport(
+    project,
+    {
+      taskId,
+      task: '打包产物核查',
+      workStatus: 'done',
+      progressEstimate: 100,
+      nextDeliverable: '已验证',
+      summary: '解决重名问题',
+      issues: [
+        { severity: 'P2', title: '[P2] dist/ 打包产物仍是旧的 Ctrl+Q 行为', detail: '已解决', status: 'resolved' },
+        { severity: 'P0', title: '【P0】P1: P2P 同步连接超时', detail: '持续观察' },
+      ],
+    },
+    { sessionId: 'session-issue-1', workspacePath: '/tmp/proj-issue-title', now: '2026-11-23T03:32:00.000Z' }
+  ));
+
+  // Simulate legacy persisted [P2] prefix directly in project.issues -> buildProjectView & selectPriorityFocus clean it too
+  project.issues.push({
+    id: 'iss-legacy',
+    projectId: project.id,
+    taskId,
+    severity: 'P2',
+    title: '[P2] 历史遗留重复前缀问题',
+    detail: 'legacy',
+    status: 'open',
+    sourceSessionId: 'session-issue-1',
+    createdAt: '2026-11-23T03:33:00.000Z',
+    resolvedAt: null,
+  });
+
+  const view = buildProjectView(project);
+  const first = view.issues.find((i) => i.id === originalIssueId);
+  const second = view.issues.find((i) => i.id !== originalIssueId && i.id !== 'iss-legacy');
+  const legacy = view.issues.find((i) => i.id === 'iss-legacy');
+
+  assert.equal(view.issues.length, 3);
+  assert.equal(first.title, 'dist/ 打包产物仍是旧的 Ctrl+Q 行为');
+  assert.equal(first.status, 'resolved');
+  assert.equal(second.title, 'P2P 同步连接超时');
+  assert.equal(legacy.title, '历史遗留重复前缀问题');
+  assert.equal(view.priorityItem.title, 'P2P 同步连接超时');
+});
